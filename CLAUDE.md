@@ -117,7 +117,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 - Após troca para 1 min: mediana 60 s, máximo 73 s.
 - **Auditoria do droplet em 27/09 ~21h UTC (21/09 03:06Z → 27/09 21:19Z):** 9.697 ciclos, 9.579 ok, **118 payloads `null`** (1,2%, uniformes ao longo do dia) + **38 ciclos sem registro** (HTTP 522 no `/Login/Autenticar`, confirmado no journal; 24/09: 13, 25/09: 16, 26/09: 8, 27/09: 1). Perda total ~1,6%. Nenhuma lacuna > 5 min entre ciclos ok; duração máx. 45,9 s.
   - **Os payloads `null` foram gravados no bronze** (arquivos de 58 bytes gz com conteúdo `null`, órfãos: auditoria marca `arquivo=""`). `silver.carregar_bronze` agora os pula.
-  - **Vazamento:** falha de login grava a URL com `?token=` no journald. Coletor corrigido localmente para mascarar; token deve ser rotacionado de qualquer forma.
+  - **Vazamento:** falha de login grava a URL com `?token=` no journald. Coletor corrigido (deploy 27/09) para mascarar; token mantido por decisão do Gabriel.
 - Disco 48% em 27/09. Backup noturno leva 1h07–1h19 (era 6 min) por causa do volume a 1 min; sem falhas `!!!`.
 - **CET:** 976 ciclos, 898 ok, 49 `erro_parse` ("0 de 5 regiões", ainda ocorrendo, ~5%), 29 `erro` (timeout/503, 21–23/09). Investigar um HTML de `erro_parse`.
 - Dedupe por `(p, ta)` descartava só ~0,3% (a fonte atualiza mais rápido que o poll).
