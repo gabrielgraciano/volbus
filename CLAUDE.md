@@ -105,6 +105,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 | 21/09/2026 02:51 | Início do coletor CET (10 min) |
 | 21/09/2026 02:55 | Cadência 2 min → **1 min** (antes: drift de ~2min10s por `OnUnitActiveSec`) |
 | 21/09/2026 ~03:06 | Bronze achatado → **cru** (`bronze_raw`); dedupe sai da ingestão |
+| 27/09/2026 21:46 | Deploy do coletor corrigido (retry em payload `null`, login auditado, token mascarado) |
 | 27/09/2026 21:36 | Início do coletor KMZ (velocidade nas vias SPTrans; 5 min, 1 min a partir de 21:44) |
 
 ### Qualidade auditada
@@ -297,7 +298,7 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 7. **Recarregar DigitalOcean** (~15/10).
 8. **Databricks Enterprise Trial:** criado; workspace ID enviado ao Rafael (aprovação interna com Elisa). **Confirmar duração da trial** antes de queimar a janela. Docs relevantes agora: Jobs, Triggers (file arrival), Compute. DABs depois que o pipeline existir. Lakeflow Connect: não se aplica (ingestão já é externa). Free Edition tinha egress restrito — não lia o Drive.
 9. **Repositório Git:** privado em https://github.com/gabrielgraciano/volbus (push em 27/09). Commit `ba380b4` = estado herdado da IA, antes de qualquer correção. Falta: README escrito pelo Gabriel. `.gitignore` bloqueia `.env`, `rclone.conf`, `data/` e arquivos de dado; `.gitattributes` força LF (CRLF quebra o cron).
-9b. **Deploy das correções do coletor** (payload `null` entra no retry; login dentro do ciclo auditado; token mascarado nos erros) — corrigido localmente, **ainda não está no droplet**. Em 27/09 o `coletor.py` do droplet era idêntico ao commit `ba380b4`. No droplet o arquivo se chama `coletor.py`.
+9b. ~~Deploy das correções do coletor~~ — feito 27/09 21:46 UTC (commit `63be6e2` do `coletor_v2.py` → `coletor.py` no droplet; backup em `coletor.py.bak-20260927`). A partir daqui, payload `null` entra no retry e falha de login gera linha de auditoria.
 9c. **Corrigir o `%` do alerta de disco no crontab** (§2).
 10. **Checagens:** fuso (pico 6–9h local), erros de coleta × chuva, velocidade inferida × lentidão CET por região/hora.
 11. **Segurança:** o token da SPTrans e uma senha foram colados em chat — **rotacionar**. Ao fim do projeto, revogar o acesso do rclone na conta Google.
