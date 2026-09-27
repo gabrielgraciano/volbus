@@ -89,7 +89,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
   20 * * * * df -h / | awk 'NR==2 && int($5) > 80 {print strftime("%F %T"), "DISCO EM", $5}' >> /home/gabriel/olhovivo/data/alertas.log
   */10 * * * * /home/gabriel/olhovivo/.venv/bin/python /home/gabriel/olhovivo/coletor_cet.py --out /home/gabriel/olhovivo/data/cet >> /home/gabriel/olhovivo/cet.log 2>&1
   0 5 * * * /home/gabriel/olhovivo/backup.sh
-  */5 * * * * cd /home/gabriel/olhovivo && set -a && . ./.env && set +a && .venv/bin/python coletor_kmz.py --out /home/gabriel/olhovivo/data/kmz >> /home/gabriel/olhovivo/kmz.log 2>&1
+  * * * * * cd /home/gabriel/olhovivo && set -a && . ./.env && set +a && .venv/bin/python coletor_kmz.py --out /home/gabriel/olhovivo/data/kmz >> /home/gabriel/olhovivo/kmz.log 2>&1
   ```
   **Bug (27/09):** a linha do alerta de disco nunca funcionou — `alertas.log` não existe. No crontab, `%` sem escape vira quebra de linha e trunca o comando no `strftime("%F %T")`. Corrigir para `\%F \%T` (ou mover para script).
 - **backup.sh:** `rclone move` de `bronze_posicao` e `bronze_raw` com `--min-age 48h --delete-empty-src-dirs` para `gdrive:olhovivo-bronze/<sub>`; depois `rclone copy` de `data/` inteiro (exclui `estado_dedupe.json`). Cada passo independente; falhas marcadas com `!!!` no log.
@@ -105,7 +105,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 | 21/09/2026 02:51 | Início do coletor CET (10 min) |
 | 21/09/2026 02:55 | Cadência 2 min → **1 min** (antes: drift de ~2min10s por `OnUnitActiveSec`) |
 | 21/09/2026 ~03:06 | Bronze achatado → **cru** (`bronze_raw`); dedupe sai da ingestão |
-| 27/09/2026 21:36 | Início do coletor KMZ (velocidade nas vias SPTrans, 5 min) |
+| 27/09/2026 21:36 | Início do coletor KMZ (velocidade nas vias SPTrans; 5 min, 1 min a partir de 21:44) |
 
 ### Qualidade auditada
 - Auditoria de 13/09 (dado bruto, 25/08 19h18 → 13/09 02h00 SP): **12.295 ciclos**, 12.132 ok, **163 erros (1,3%)**, 86,1 M posições.
@@ -160,7 +160,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 - `GET /KMZ` (mesma sessão do login) → zip com `TA.kml`, ~156 KB (1,4 MB descomprimido). Traz **os dois sentidos**: 27/09 = 633 `Placemark` (trechos) em 244 `Folder` (corredores/vias, 127 BC + 117 CB). Variantes `/KMZ/BC`, `/KMZ/CB`, `/KMZ/Corredor`, `/KMZ/OutrasVias` são subconjuntos.
 - Por trecho: nome da via + sentido, "de X até Y", referência, **extensão (m)**, **velocidade média (km/h)**, **tempo médio de percurso**, velocidade média do corredor; geometria `LineString`. Atributo `eBC="8,4"` no `Placemark` — significado desconhecido. Os campos vêm em HTML escapado dentro de `<description>` → parse na silver.
 - **Papel:** velocidade oficial por trecho, calculada pela própria SPTrans a partir dos ônibus → validação direta da nossa velocidade inferida e, nas vias principais, candidato a trecho pronto. Não cobre a malha toda.
-- Bronze: `data/kmz/bronze_kmz/dt=YYYY-MM-DD/kmz_<UTC>.kmz` (cru, sem gzip). Auditoria com `sha256` (16 hex) → hashes repetidos = fonte não atualizou; usar para medir a frequência real e ajustar o cron. ~45 MB/dia a 5 min. `backup.sh` move após 48h.
+- Bronze: `data/kmz/bronze_kmz/dt=YYYY-MM-DD/kmz_<UTC>.kmz` (cru, sem gzip). Auditoria com `sha256` (16 hex) → hashes repetidos = fonte não atualizou; usar para medir a frequência real e ajustar o cron. ~225 MB/dia a 1 min (hash mudou em 3,5 min no primeiro teste). `backup.sh` move após 48h.
 - Não usados (e por quê): `/Previsao*` (previsão, não observação), `/Posicao/Garagem`, `/Empresa`. **Baixar uma vez:** `/Corredor` + `/Parada/BuscarParadasPorCorredor` (quais paradas estão em corredor → atributo do KR4).
 
 ## 4. GTFS estático (SPTrans)
