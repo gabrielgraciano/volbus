@@ -131,12 +131,15 @@ def coletar_uma_vez(sess, token, out: Path) -> int:
         print(f"[{iso}] ok — {n} veiculos")
         return n
     except Exception as e:  # noqa: BLE001
+        # O HTTPError do login traz a URL com ?token=...; nao vazar para a
+        # auditoria nem para o journal do systemd.
+        msg = f"{type(e).__name__}: {e}".replace(token, "***")
         auditar(out, coletado_em=iso, status="erro",
                 veiculos_brutos=0, veiculos_gravados=0, hr_api="",
                 arquivo="", bytes=0,
                 duracao_s=round(time.monotonic() - t0, 2),
-                erro=f"{type(e).__name__}: {e}"[:300])
-        print(f"[{iso}] ERRO — {type(e).__name__}: {e}", file=sys.stderr)
+                erro=msg[:300])
+        print(f"[{iso}] ERRO — {msg}", file=sys.stderr)
         return -1
 
 

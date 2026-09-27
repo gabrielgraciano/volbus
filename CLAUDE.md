@@ -89,6 +89,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
   */10 * * * * /home/gabriel/olhovivo/.venv/bin/python /home/gabriel/olhovivo/coletor_cet.py --out /home/gabriel/olhovivo/data/cet >> /home/gabriel/olhovivo/cet.log 2>&1
   0 5 * * * /home/gabriel/olhovivo/backup.sh
   ```
+  **Bug (27/09):** a linha do alerta de disco nunca funcionou — `alertas.log` não existe. No crontab, `%` sem escape vira quebra de linha e trunca o comando no `strftime("%F %T")`. Corrigir para `\%F \%T` (ou mover para script).
 - **backup.sh:** `rclone move` de `bronze_posicao` e `bronze_raw` com `--min-age 48h --delete-empty-src-dirs` para `gdrive:olhovivo-bronze/<sub>`; depois `rclone copy` de `data/` inteiro (exclui `estado_dedupe.json`). Cada passo independente; falhas marcadas com `!!!` no log.
 
 ### Armazenamento
@@ -110,6 +111,11 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
   - **14 ciclos sem nenhuma linha na auditoria** (12 na manhã de 28/08, 9h35–14h38 SP). Causa provável: `autenticar()` roda fora do trecho auditado; falha de login mata o processo sem registro.
   - Maior buraco entre ciclos **ok**: 8,5 min; nenhum > 10 min. (A checagem antiga media entre todas as linhas, inclusive erros — método frágil.)
 - Após troca para 1 min: mediana 60 s, máximo 73 s.
+- **Auditoria do droplet em 27/09 ~21h UTC (21/09 03:06Z → 27/09 21:19Z):** 9.697 ciclos, 9.579 ok, **118 payloads `null`** (1,2%, uniformes ao longo do dia) + **38 ciclos sem registro** (HTTP 522 no `/Login/Autenticar`, confirmado no journal; 24/09: 13, 25/09: 16, 26/09: 8, 27/09: 1). Perda total ~1,6%. Nenhuma lacuna > 5 min entre ciclos ok; duração máx. 45,9 s.
+  - **Os payloads `null` foram gravados no bronze** (arquivos de 58 bytes gz com conteúdo `null`, órfãos: auditoria marca `arquivo=""`). `silver.carregar_bronze` agora os pula.
+  - **Vazamento:** falha de login grava a URL com `?token=` no journald. Coletor corrigido localmente para mascarar; token deve ser rotacionado de qualquer forma.
+- Disco 48% em 27/09. Backup noturno leva 1h07–1h19 (era 6 min) por causa do volume a 1 min; sem falhas `!!!`.
+- **CET:** 976 ciclos, 898 ok, 49 `erro_parse` ("0 de 5 regiões", ainda ocorrendo, ~5%), 29 `erro` (timeout/503, 21–23/09). Investigar um HTML de `erro_parse`.
 - Dedupe por `(p, ta)` descartava só ~0,3% (a fonte atualiza mais rápido que o poll).
 
 ---
@@ -281,7 +287,8 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 7. **Recarregar DigitalOcean** (~15/10).
 8. **Databricks Enterprise Trial:** criado; workspace ID enviado ao Rafael (aprovação interna com Elisa). **Confirmar duração da trial** antes de queimar a janela. Docs relevantes agora: Jobs, Triggers (file arrival), Compute. DABs depois que o pipeline existir. Lakeflow Connect: não se aplica (ingestão já é externa). Free Edition tinha egress restrito — não lia o Drive.
 9. **Repositório Git:** `git init` feito em 27/09 nesta pasta (commit `ba380b4` = estado herdado da IA, antes de qualquer correção). Falta: criar repositório **privado** no GitHub e dar push; README escrito pelo Gabriel. `.gitignore` bloqueia `.env`, `rclone.conf`, `data/` e arquivos de dado; `.gitattributes` força LF (CRLF quebra o cron).
-9b. **Deploy das correções do coletor** (payload `null` entra no retry; login dentro do ciclo auditado) — corrigido localmente, **ainda não está no droplet**.
+9b. **Deploy das correções do coletor** (payload `null` entra no retry; login dentro do ciclo auditado; token mascarado nos erros) — corrigido localmente, **ainda não está no droplet**. Em 27/09 o `coletor.py` do droplet era idêntico ao commit `ba380b4`. No droplet o arquivo se chama `coletor.py`.
+9c. **Corrigir o `%` do alerta de disco no crontab** (§2).
 10. **Checagens:** fuso (pico 6–9h local), erros de coleta × chuva, velocidade inferida × lentidão CET por região/hora.
 11. **Segurança:** o token da SPTrans e uma senha foram colados em chat — **rotacionar**. Ao fim do projeto, revogar o acesso do rclone na conta Google.
 
@@ -309,6 +316,7 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 - Olho Vivo: POST sem `Content-Length` → 411; token novo leva horas para valer.
 - Windows: `~` não existe no `scp` do PowerShell — usar caminho completo entre aspas. `curl` no PowerShell é apelido: usar `curl.exe`.
 - Scripts editados no Windows: rodar `sed -i 's/\r$//' arquivo` antes de agendar (CRLF quebra no cron em silêncio).
+- crontab: `%` precisa de escape (`\%`), senão vira quebra de linha e o comando é truncado em silêncio.
 - Bash interativo: `"!!!"` entre aspas duplas aciona expansão de histórico — usar aspas simples.
 - cron não herda ambiente: caminhos absolutos, carregar `.env` explicitamente.
 - `apt upgrade` perguntando sobre `sshd_config`: **manter a versão local**.

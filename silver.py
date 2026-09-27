@@ -208,7 +208,12 @@ def carregar_bronze(padrao: str, limite_arquivos: int | None = None) -> pd.DataF
             col = (pd.to_datetime(m.group(1), format="%Y%m%dT%H%M%SZ", utc=True).isoformat()
                    if m else None)
             with gzip.open(f, "rt", encoding="utf-8") as fh:
-                registros.extend(_achatar_payload(json.load(fh), col))
+                payload = json.load(fh)
+            # Ate o deploy da correcao do coletor, respostas `null` da API eram
+            # gravadas no bronze (58 bytes gz). Nao ha dado nelas: pular.
+            if not isinstance(payload, dict):
+                continue
+            registros.extend(_achatar_payload(payload, col))
 
     df = pd.DataFrame(registros)
     df["ta"] = pd.to_datetime(df["ta"], format="ISO8601", utc=True)
