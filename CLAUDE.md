@@ -86,7 +86,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 - **systemd** `/etc/systemd/system/olhovivo.timer` → `OnCalendar=*-*-* *:*:00`, `AccuracySec=5s`, `Persistent=true`; `olhovivo.service` é `Type=oneshot`, `User=gabriel`, `EnvironmentFile=.env`, `ExecStart=.venv/bin/python coletor.py --out /home/gabriel/olhovivo/data`.
 - **crontab (gabriel):**
   ```cron
-  20 * * * * df -h / | awk 'NR==2 && int($5) > 80 {print strftime("%F %T"), "DISCO EM", $5}' >> /home/gabriel/olhovivo/data/alertas.log
+  20 * * * * df -h / | awk 'NR==2 && int($5) > 80 {print strftime("\%F \%T"), "DISCO EM", $5}' >> /home/gabriel/olhovivo/data/alertas.log
   */10 * * * * /home/gabriel/olhovivo/.venv/bin/python /home/gabriel/olhovivo/coletor_cet.py --out /home/gabriel/olhovivo/data/cet >> /home/gabriel/olhovivo/cet.log 2>&1
   0 5 * * * /home/gabriel/olhovivo/backup.sh
   * * * * * cd /home/gabriel/olhovivo && set -a && . ./.env && set +a && .venv/bin/python coletor_kmz.py --out /home/gabriel/olhovivo/data/kmz >> /home/gabriel/olhovivo/kmz.log 2>&1
@@ -299,9 +299,9 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 8. **Databricks Enterprise Trial:** criado; workspace ID enviado ao Rafael (aprovação interna com Elisa). **Confirmar duração da trial** antes de queimar a janela. Docs relevantes agora: Jobs, Triggers (file arrival), Compute. DABs depois que o pipeline existir. Lakeflow Connect: não se aplica (ingestão já é externa). Free Edition tinha egress restrito — não lia o Drive.
 9. **Repositório Git:** privado em https://github.com/gabrielgraciano/volbus (push em 27/09). Commit `ba380b4` = estado herdado da IA, antes de qualquer correção. Falta: README escrito pelo Gabriel. `.gitignore` bloqueia `.env`, `rclone.conf`, `data/` e arquivos de dado; `.gitattributes` força LF (CRLF quebra o cron).
 9b. ~~Deploy das correções do coletor~~ — feito 27/09 21:46 UTC (commit `63be6e2` do `coletor_v2.py` → `coletor.py` no droplet; backup em `coletor.py.bak-20260927`). A partir daqui, payload `null` entra no retry e falha de login gera linha de auditoria.
-9c. **Corrigir o `%` do alerta de disco no crontab** (§2).
+9c. ~~Corrigir o `%` do alerta de disco~~ — feito 27/09 (testado com limiar 0%). Crontab versionado em `crontab.txt`; instalar com `crontab crontab.txt`.
 10. **Checagens:** fuso (pico 6–9h local), erros de coleta × chuva, velocidade inferida × lentidão CET por região/hora.
-11. **Segurança:** o token da SPTrans e uma senha foram colados em chat — **rotacionar**. Ao fim do projeto, revogar o acesso do rclone na conta Google.
+11. **Segurança:** decisão do Gabriel (27/09): o token da SPTrans **não será rotacionado** (baixo risco). Ao fim do projeto, revogar o acesso do rclone na conta Google.
 
 ---
 

@@ -1,0 +1,4 @@
+20 * * * * df -h / | awk 'NR==2 && int($5) > 80 {print strftime("\%F \%T"), "DISCO EM", $5}' >> /home/gabriel/olhovivo/data/alertas.log
+*/10 * * * * /home/gabriel/olhovivo/.venv/bin/python /home/gabriel/olhovivo/coletor_cet.py --out /home/gabriel/olhovivo/data/cet >> /home/gabriel/olhovivo/cet.log 2>&1
+0 5 * * * /home/gabriel/olhovivo/backup.sh
+* * * * * cd /home/gabriel/olhovivo && set -a && . ./.env && set +a && .venv/bin/python coletor_kmz.py --out /home/gabriel/olhovivo/data/kmz >> /home/gabriel/olhovivo/kmz.log 2>&1
