@@ -3,6 +3,11 @@
 > Gerado em 27/09/2026 a partir das conversas de planejamento. Fonte de verdade
 > para retomar o trabalho no Claude Code. Onde este documento e o código
 > divergirem, **o código no droplet vale** (ele produziu a coleta).
+>
+> As notas do Obsidian "Ônibus SP - Resumo do que existe" e "Ônibus SP - Plano de
+> ação" (13/09) são **históricas**: descrevem o plano anterior (Free Edition,
+> EWT/headway como medida principal, prazo 26/10, coleta a 2 min). A auditoria
+> da coleta feita nelas continua válida e foi incorporada em §2.
 
 ## Quem e para quê
 
@@ -99,7 +104,11 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 | 21/09/2026 ~03:06 | Bronze achatado → **cru** (`bronze_raw`); dedupe sai da ingestão |
 
 ### Qualidade auditada
-- 25/08–12/09: **11.597 ciclos, zero lacunas > 10 min**, 159 erros (1,4%) absorvidos pelo retry.
+- Auditoria de 13/09 (dado bruto, 25/08 19h18 → 13/09 02h00 SP): **12.295 ciclos**, 12.132 ok, **163 erros (1,3%)**, 86,1 M posições.
+  - **Os 163 erros são todos o mesmo:** `AttributeError: 'NoneType' object has no attribute 'get'`, com duração de 0,1–0,2 s. A API respondeu HTTP 200 com corpo `null`. **Nenhum foi absorvido pelo retry** (o retry só age em falha de requisição) → ciclo perdido. ~35% entre 3h e 7h; pior dia 04/09 (43).
+  - ~~"159 erros de rede absorvidos pelo retry"~~ — afirmação de um relatório anterior gerado por IA, **errada**.
+  - **14 ciclos sem nenhuma linha na auditoria** (12 na manhã de 28/08, 9h35–14h38 SP). Causa provável: `autenticar()` roda fora do trecho auditado; falha de login mata o processo sem registro.
+  - Maior buraco entre ciclos **ok**: 8,5 min; nenhum > 10 min. (A checagem antiga media entre todas as linhas, inclusive erros — método frágil.)
 - Após troca para 1 min: mediana 60 s, máximo 73 s.
 - Dedupe por `(p, ta)` descartava só ~0,3% (a fonte atualiza mais rápido que o poll).
 
@@ -228,9 +237,15 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 
 ## 8. Literatura
 
-### Mais próximo — ler antes de fechar os KRs
-- **Dissertação Poli-USP (2018)**, `teses.usp.br/teses/disponiveis/3/3138/tde-12032018-134651` — variabilidade da velocidade dos ônibus de SP em condições normais e sob precipitação; "microviagens", árvores CHAID e krigagem; dados SPTrans de março/2014; queda consistente 16–19h agravada pela chuva. **"Chuva reduz velocidade em SP" não é pergunta nova.** Verificar qual fonte/resolução de chuva usaram e se fizeram ranking de trechos.
-- **Tenório et al. (NetMob26, Niterói, IME-USP)** — mesma pergunta em Niterói. Contato: `lucastoshioka@usp.br`.
+### Mais próximo — lidos em 27/09 (PDFs em `../material bibliografico/`)
+- **Gonçalves, E. S. (2018)**, dissertação Poli-USP (orient. C. L. Marte), `ErickSobreiroGoncalvesCorr18.pdf`.
+  - Dados: AVL SPTrans março/2014 (~35 M registros, ping ~80 s); chuva **horária de 1 estação** (INMET Mirante de Santana) aplicada num raio de 7 km.
+  - Método: "microviagens" = par de pings consecutivos, distância euclidiana, **sem map matching e sem trechos**; exclui < 3 km/h, gaps > 5 min, fora de dia útil 7–21h. CHAID + krigagem; **sem teste de significância**.
+  - Achados: 17,4 → 16,3 km/h com chuva (−6% agregado); até −24% com ≥ 15 mm/h no pico de sexta. Queda 16–19h. **Efeito defasado** (lentidão chega depois da chuva, propagando dos acessos às vias expressas) → apoia KR2. Sem dose-resposta clara. Vias expressas/acessos/viadutos mais afetados; centro lento mas homogêneo → hipótese para KR4.
+  - Limitações: 1 mês, 1 pluviômetro, **Carnaval coincidiu com chuva**.
+  - **Não fez ranking de trechos** → KR3 é contribuição nova. Nosso diferencial: trecho via shape, chuva de 10 min do posto mais próximo, vários meses.
+- **Tenório et al. (NetMob26, Niterói, IME-USP)**, `relatorio_netmob.PDF` — mesma pergunta em Niterói. Contato: `lucastoshioka@usp.br`.
+  - Reaproveitar: filtros de viagem (> 500 m, 2–300 min, 2–80 km/h); **densidade de pings** (observados/esperados, capada em 1) como peso/filtro de cobertura; split temporal no modelo preditivo.
   - Evidência a favor: correlação agregada −0,05, efeito só por rota/região; chuva com menor importância no XGBoost.
   - Limitação declarada = nosso diferencial: poucos eventos de chuva, 1 estação horária, ~1 mês (máx. 11,8 mm/dia).
   - **Não copiar:** uma estação para a cidade (não separa "choveu mais ali" de "infra pior ali"); chuva **diária** × viagem (e o limiar 2,5 mm da OMM é **por hora**); XGBoost prevendo duração bruta com `lineId` (R² 0,84 vem do tamanho da rota); testes por rota sem correção de múltiplas comparações; viagens tratadas como independentes (pseudo-replicação).
@@ -255,8 +270,8 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 
 ## 9. Pendências (em ordem)
 
-1. **Ler a dissertação Poli-USP 2018** antes de fechar os KRs.
-2. **Decidir com o Rafael:** definição de trecho, [N] como regra, estabilidade operacional do KR3.
+1. ~~Ler a dissertação Poli-USP 2018~~ — feito 27/09 (§8).
+2. **Decidir com o Rafael (reunião 28/09):** definição de trecho, [N] como regra, estabilidade operacional do KR3.
 3. **Terminar extração SIBH:** blocos 05–17 + repescagem; rodar `consolida_chuva.py`.
 4. **Validar coordenadas** dos postos (decimal, sinais negativos, caixa de SP).
 5. **Implementar velocidade por trecho** na silver (apportionment + filtros + baseline).
@@ -265,7 +280,8 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
    Prazo legal: 20 dias + 10 de prorrogação.
 7. **Recarregar DigitalOcean** (~15/10).
 8. **Databricks Enterprise Trial:** criado; workspace ID enviado ao Rafael (aprovação interna com Elisa). **Confirmar duração da trial** antes de queimar a janela. Docs relevantes agora: Jobs, Triggers (file arrival), Compute. DABs depois que o pipeline existir. Lakeflow Connect: não se aplica (ingestão já é externa). Free Edition tinha egress restrito — não lia o Drive.
-9. **Repositório Git** + documentação (código reconhecidamente "várzea"). Nunca versionar `.env` nem `data/`.
+9. **Repositório Git:** `git init` feito em 27/09 nesta pasta (commit `ba380b4` = estado herdado da IA, antes de qualquer correção). Falta: criar repositório **privado** no GitHub e dar push; README escrito pelo Gabriel. `.gitignore` bloqueia `.env`, `rclone.conf`, `data/` e arquivos de dado; `.gitattributes` força LF (CRLF quebra o cron).
+9b. **Deploy das correções do coletor** (payload `null` entra no retry; login dentro do ciclo auditado) — corrigido localmente, **ainda não está no droplet**.
 10. **Checagens:** fuso (pico 6–9h local), erros de coleta × chuva, velocidade inferida × lentidão CET por região/hora.
 11. **Segurança:** o token da SPTrans e uma senha foram colados em chat — **rotacionar**. Ao fim do projeto, revogar o acesso do rclone na conta Google.
 
@@ -275,7 +291,7 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 
 | Arquivo | Estado |
 |---|---|
-| `coletor.py` (v2, payload cru) | **em produção** no droplet |
+| `coletor_v2.py` (local) = `coletor.py` no droplet (v2, payload cru) | **em produção** no droplet |
 | `coletor_cet.py` | **em produção** |
 | `backup.sh` | **em produção** |
 | `silver.py` | atual (lê v1+v2); falta velocidade por trecho |
