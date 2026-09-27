@@ -17,6 +17,7 @@ from __future__ import annotations
 import gzip
 import json
 import math
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -79,8 +80,10 @@ class Shape:
         Projeta pontos no shape.
 
         Retorna (dist_ao_longo_m, erro_lateral_m). O erro lateral e o quanto o
-        ponto esta fora da rota — e o principal filtro de qualidade: valores
-        altos significam GPS ruim, veiculo fora de rota, ou shape errado.
+        ponto esta fora da rota. Como a SPTrans ja publica as posicoes sobre a
+        rota, no shape certo ele fica ~0 e NAO serve como filtro de qualidade
+        (ver ERRO_LATERAL_ESPERADO_M). Serve para comparar shapes: valor alto
+        indica shape errado (ex.: sentido trocado).
         """
         px, py = para_xy(lat, lon)
         p = np.column_stack([px, py])
@@ -148,6 +151,14 @@ def construir_shapes(gtfs: dict[str, pd.DataFrame]) -> dict[str, Shape]:
 def mapa_trip(gtfs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """route_id + direction_id -> trip_id e shape_id."""
     t = gtfs["trips"][["route_id", "direction_id", "trip_id", "shape_id"]].copy()
+    # Uma rota+sentido pode ter mais de um shape (variantes). Fica o primeiro
+    # por trip_id, de forma deterministica, mas avisamos quantos casos ha.
+    n_shapes = t.groupby(["route_id", "direction_id"])["shape_id"].nunique()
+    n_ambiguos = int((n_shapes > 1).sum())
+    if n_ambiguos:
+        warnings.warn(f"{n_ambiguos} pares rota+sentido com mais de um shape_id; "
+                      "usando o do menor trip_id")
+    t = t.sort_values("trip_id")
     return t.drop_duplicates(["route_id", "direction_id"])
 
 
