@@ -33,6 +33,10 @@ TIMEOUT = 30
 TENTATIVAS = 4
 
 
+class PayloadVazio(Exception):
+    """HTTP 200, mas o corpo nao e o JSON esperado (ex.: literalmente null)."""
+
+
 # --------------------------------------------------------------------------
 # API
 # --------------------------------------------------------------------------
@@ -56,7 +60,12 @@ def buscar_posicao(sess: requests.Session, token: str) -> tuple[bytes, dict]:
                 autenticar(sess, token)
                 r = sess.get(f"{BASE}/Posicao", timeout=TIMEOUT)
             r.raise_for_status()
-            return r.content, r.json()
+            payload = r.json()
+            # A API as vezes responde HTTP 200 com corpo null. Tratamos como
+            # falha para cair no mesmo backoff; o corpo invalido nao e gravado.
+            if not isinstance(payload, dict) or "l" not in payload:
+                raise PayloadVazio(f"corpo={r.text[:100]}")
+            return r.content, payload
         except Exception as e:  # noqa: BLE001
             ultimo_erro = e
             if tentativa < TENTATIVAS:
@@ -109,6 +118,8 @@ def coletar_uma_vez(sess, token, out: Path) -> int:
     iso = agora.isoformat()
     t0 = time.monotonic()
     try:
+        # Login dentro do try: se falhar, o ciclo ainda deixa linha na auditoria.
+        autenticar(sess, token)
         conteudo, payload = buscar_posicao(sess, token)
         destino = gravar_cru(conteudo, out, agora)
         n = contar_veiculos(payload)
@@ -142,7 +153,6 @@ def main() -> int:
     out = Path(args.out).expanduser().resolve()
     out.mkdir(parents=True, exist_ok=True)
     sess = requests.Session()
-    autenticar(sess, token)
     return 0 if coletar_uma_vez(sess, token, out) >= 0 else 1
 
 
