@@ -286,7 +286,7 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
    Prazo legal: 20 dias + 10 de prorrogação.
 7. **Recarregar DigitalOcean** (~15/10).
 8. **Databricks Enterprise Trial:** criado; workspace ID enviado ao Rafael (aprovação interna com Elisa). **Confirmar duração da trial** antes de queimar a janela. Docs relevantes agora: Jobs, Triggers (file arrival), Compute. DABs depois que o pipeline existir. Lakeflow Connect: não se aplica (ingestão já é externa). Free Edition tinha egress restrito — não lia o Drive.
-9. **Repositório Git:** `git init` feito em 27/09 nesta pasta (commit `ba380b4` = estado herdado da IA, antes de qualquer correção). Falta: criar repositório **privado** no GitHub e dar push; README escrito pelo Gabriel. `.gitignore` bloqueia `.env`, `rclone.conf`, `data/` e arquivos de dado; `.gitattributes` força LF (CRLF quebra o cron).
+9. **Repositório Git:** privado em https://github.com/gabrielgraciano/volbus (push em 27/09). Commit `ba380b4` = estado herdado da IA, antes de qualquer correção. Falta: README escrito pelo Gabriel. `.gitignore` bloqueia `.env`, `rclone.conf`, `data/` e arquivos de dado; `.gitattributes` força LF (CRLF quebra o cron).
 9b. **Deploy das correções do coletor** (payload `null` entra no retry; login dentro do ciclo auditado; token mascarado nos erros) — corrigido localmente, **ainda não está no droplet**. Em 27/09 o `coletor.py` do droplet era idêntico ao commit `ba380b4`. No droplet o arquivo se chama `coletor.py`.
 9c. **Corrigir o `%` do alerta de disco no crontab** (§2).
 10. **Checagens:** fuso (pico 6–9h local), erros de coleta × chuva, velocidade inferida × lentidão CET por região/hora.
