@@ -1,0 +1,19 @@
+# segredos
+.env
+*.env
+rclone.conf
+
+# dados (ficam no Drive / Databricks, nunca no Git)
+data/
+*.ndjson.gz
+*.json.gz
+*.html.gz
+*.parquet
+csvs_sibh/
+gtfs/
+
+# ambiente
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
