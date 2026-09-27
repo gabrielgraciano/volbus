@@ -302,6 +302,8 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 9c. ~~Corrigir o `%` do alerta de disco~~ — feito 27/09 (testado com limiar 0%). Crontab versionado em `crontab.txt`; instalar com `crontab crontab.txt`.
 10. **Checagens:** fuso (pico 6–9h local), erros de coleta × chuva, velocidade inferida × lentidão CET por região/hora.
 11. **Segurança:** decisão do Gabriel (27/09): o token da SPTrans **não será rotacionado** (baixo risco). Ao fim do projeto, revogar o acesso do rclone na conta Google.
+12. **Backlog — S3 próprio (decidir depois da duração do trial):** bucket S3 (~US$ 1–2/mês p/ 30–60 GB) como storage do catálogo. Ganhos: tabelas sobrevivem ao fim do trial; VM → S3 direto + Auto Loader com file arrival (tira o Drive do caminho); API cria catálogo. Custo: conta AWS + IAM role + storage credential/external location (1–2 h). Conta nova tem Free Tier com créditos (confirmar valor no cadastro); **configurar alerta de orçamento**. Perguntar ao Rafael se usa S3 da empresa.
+13. **Backlog — AWS estudante:** verificação no AWS Builder Center dá 1 ano de Skill Builder e voucher de certificação Foundational (Cloud Practitioner). Não dá créditos de uso.
 
 ---
 
