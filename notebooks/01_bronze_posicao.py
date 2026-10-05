@@ -1,10 +1,18 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # 01 — Bronze: posicoes do Olho Vivo (formato v2, cru)
+# MAGIC # 01 — Bronze: posicoes do Olho Vivo (formatos v1 e v2)
 # MAGIC
-# MAGIC Le os arquivos `.json.gz` do volume (uma resposta inteira da API por arquivo),
-# MAGIC achata para **uma linha por onibus por ciclo** e grava a tabela Delta
-# MAGIC `onibus.bronze.posicao`, particionada por `dt` (dia de SP).
+# MAGIC Junta os dois formatos que o coletor ja gravou numa tabela so, com **uma linha por
+# MAGIC onibus por ciclo**: a tabela Delta `onibus.bronze.posicao`, particionada por `dt` (dia de SP).
+# MAGIC
+# MAGIC | | v1 (25/08 → 21/09) | v2 (21/09 → hoje) |
+# MAGIC |---|---|---|
+# MAGIC | pasta | `bronze_posicao/` | `bronze_raw/` |
+# MAGIC | arquivo | `.ndjson.gz`, ja achatado (1 linha = 1 onibus) | `.json.gz`, resposta inteira da API |
+# MAGIC | ciclo | ~2 min | 1 min |
+# MAGIC | dedupe | feito pelo coletor | nenhum |
+# MAGIC
+# MAGIC O dia 21/09 tem os dois (a troca foi as 00h06 de SP).
 # MAGIC
 # MAGIC Nada de limpeza aqui: sem dedupe, sem filtro. Isso e trabalho da silver.
 # MAGIC A unica coisa descartada sao os arquivos `null` (resposta vazia da API).
@@ -16,7 +24,9 @@ from pyspark.sql import functions as F, types as T
 # Todos os timestamps em UTC; a conversao para horario de SP e explicita.
 spark.conf.set("spark.sql.session.timeZone", "UTC")
 
-BASE = "/Volumes/onibus/bronze/raw/olhovivo/bronze_raw"
+RAIZ = "/Volumes/onibus/bronze/raw/olhovivo"
+BASE = f"{RAIZ}/bronze_raw"          # v2
+BASE_V1 = f"{RAIZ}/bronze_posicao"   # v1
 TABELA = "onibus.bronze.posicao"
 
 # COMMAND ----------
@@ -91,7 +101,50 @@ posicao = (
         "arquivo",
     )
 )
-display(posicao.limit(10))
+posicao_v2 = posicao.withColumn("formato", F.lit("v2"))
+display(posicao_v2.limit(10))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 2b. Formato v1
+# MAGIC
+# MAGIC Ja vem uma linha por onibus, com os mesmos campos — nao precisa de `explode`.
+# MAGIC Diferencas: `p` vem como texto (vira numero aqui) e `coletado_em` ja esta no arquivo.
+
+# COMMAND ----------
+
+schema_v1 = T.StructType([
+    T.StructField("ta", T.StringType()),
+    T.StructField("p", T.StringType()),
+    T.StructField("cl", T.LongType()),
+    T.StructField("sl", T.IntegerType()),
+    T.StructField("c", T.StringType()),
+    T.StructField("lt0", T.StringType()),
+    T.StructField("lt1", T.StringType()),
+    T.StructField("py", T.DoubleType()),
+    T.StructField("px", T.DoubleType()),
+    T.StructField("a", T.BooleanType()),
+    T.StructField("hr", T.StringType()),
+    T.StructField("coletado_em", T.StringType()),
+])
+
+posicao_v1 = (
+    spark.read.schema(schema_v1).json(BASE_V1)
+    .select(
+        F.col("dt").cast("string").alias("dt"),
+        F.to_timestamp("coletado_em").alias("coletado_em"),
+        F.to_timestamp("ta").alias("ta"),
+        F.col("p").cast("long").alias("p"),
+        "c", "cl", "sl", "py", "px", "a", "lt0", "lt1", "hr",
+        F.col("_metadata.file_path").alias("arquivo"),
+        F.lit("v1").alias("formato"),
+    )
+)
+
+# Mesmas colunas, na mesma ordem; unionByName casa pelo nome, nao pela posicao.
+posicao = posicao_v2.unionByName(posicao_v1)
+display(posicao.groupBy("formato").count())
 
 # COMMAND ----------
 
@@ -102,6 +155,7 @@ display(posicao.limit(10))
 
 (posicao.write
     .mode("overwrite")
+    .option("overwriteSchema", "true")   # a coluna `formato` e nova; sem isso o Delta recusa
     .partitionBy("dt")
     .saveAsTable(TABELA))
 
@@ -130,6 +184,12 @@ aud_dia = (
 )
 tab_dia = spark.table(TABELA).groupBy("dt").agg(F.count("*").alias("tabela"))
 
-display(tab_dia.join(aud_dia, "dt", "left")
-        .withColumn("dif", F.col("tabela") - F.col("auditoria"))
-        .orderBy("dt"))
+checagem = (tab_dia.join(aud_dia, "dt", "left")
+            .withColumn("dif", F.col("tabela") - F.coalesce(F.col("auditoria"), F.lit(0)))
+            .orderBy("dt"))
+display(checagem)
+
+# Num job, uma checagem que so mostra nao protege ninguem: falhar deixa o run vermelho.
+ruins = checagem.filter(F.col("dif") != 0).collect()
+assert not ruins, f"{len(ruins)} dia(s) com dif != 0: " + ", ".join(f"{r.dt} ({r.dif:+})" for r in ruins)
+print(f"ok: {checagem.count()} dias, dif = 0 em todos")
