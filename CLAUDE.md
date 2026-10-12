@@ -233,6 +233,14 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 - `descobrir_mapa_sentido`, `detectar_cruzamentos` (interpolação linear entre pings), `headway_observado`, `headway_programado`.
 - Testes: projeção exata nos vértices; ruído de 40 m degrada coerentemente; headway sintético de 600 s recuperado exato.
 
+### No Databricks (12/10)
+- `02_silver_gtfs` → `silver.gtfs_*` (ver §4).
+- `03_silver_posicao_limpa` → `silver.posicao_limpa` (grão `(p, ta)`, partição `dt`) + `silver.quarentena_posicao` (descartes com `motivo`). Overwrite total (~6 min no serverless); **fora do job diário**. Checagem: `bronze = limpa + quarentena` por dia; `(p, ta)` único.
+  - 25/08–11/10: 341,4 M → 337,7 M limpas; quarentena 1,09%: `duplicata` 0,59% (até 220 repetições do mesmo `(p, ta)` = ônibus congelado), `linha_sem_shape` 0,40% (55 linhas: especiais `PAE*`/`TREI` e ~37 variantes `-21`/`-22` que estão em `routes.txt` sem `trips`), `posicao_velha` (> 5 min) 0,06%, `ta_no_futuro` (> 60 s após `coletado_em`) 0,04%. Nenhuma fora da caixa de SP.
+  - `ta` até 60 s depois de `coletado_em` é normal: na v2 `coletado_em` é o início do ciclo (nome do arquivo).
+  - **Linhas de sentido único (circulares, ~11% das posições):** a API manda `sl=1` e `sl=2`, mas ambos caem no único shape (erro lateral 0 m mediana, p99 < 3 m; 8 linhas, 08/10). Usam esse shape (`sentido_unico = true`); `sl` ≈ metade da volta. Na `deslocamento`, troca de `sl` nelas não é troca de viagem.
+  - Fuso conferido: frota por hora em 08/10 tem picos 7–9h e 17–19h (SP). `tipo_dia` com feriados (07/09, 12/10, 02/11, 15/11, 20/11, 25/12).
+
 ### Falta: velocidade por trecho (núcleo do KR1)
 - API **não** fornece velocidade. Derivar: `v = Δd / Δt` entre pings consecutivos do mesmo veículo, com `d` = distância ao longo do shape e `t` = `ta` da fonte.
 - **Problema de desenho:** a 1 min, ônibus a 40 km/h anda ~670 m entre pings → trechos curtos ficam sem ping dentro. **Solução:** a unidade de observação é o **par de pings**; distribuir (apportionment) sua distância e tempo proporcionalmente entre os trechos que ele atravessa. Velocidade do trecho numa janela = média ponderada por distância.
