@@ -172,6 +172,8 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 - **Junção:** `c` == `route_id` para 99,8% das linhas (exceções: `PAEC-10`, `TREI-10` — serviço especial/treinamento, 3 veículos; descartar).
 - **Sentido (validado):** `sl=1 → direction_id=0`, `sl=2 → direction_id=1`. Teste: projetar nos dois shapes e comparar erro lateral; nos 647 grupos decisivos (erro 3× menor num sentido) a separação foi 294/294 e 353/353, sem contraexemplo.
 - 379 rotas com um sentido só (circulares), ~10,8% dos veículos; 5,6% dos veículos operam num sentido sem shape → tratamento próprio.
+- **Download público, sem login:** `https://www.sptrans.com.br/umbraco/Surface/PerfilDesenvolvedor/BaixarGTFS`. Versão = `versao=DDMMAA` no `agency.txt`.
+- **No Databricks (12/10):** versões 26/08 e 12/10 em `/Volumes/onibus/bronze/raw/gtfs/versao=AAAA-MM-DD/`; notebook `02_silver_gtfs` → `onibus.silver.gtfs_{routes,trips,shapes,stops,stop_times,frequencies,calendar}` (coluna `versao`) + `gtfs_versao` (`usar_de`/`usar_ate` por dia). Checagens de contagem, chave e referência passam. **O GTFS muda:** 26/08→12/10, 882/2.188 shapes mudaram (maioria < 15 m; 21 > 500 m), 612/2.271 viagens mudaram a sequência de paradas. Cobertura em 11/10: 99,73% das posições com linha no GTFS, **91,22% com linha+sentido com shape**.
 
 ---
 
