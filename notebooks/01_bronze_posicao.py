@@ -193,3 +193,18 @@ display(checagem)
 ruins = checagem.filter(F.col("dif") != 0).collect()
 assert not ruins, f"{len(ruins)} dia(s) com dif != 0: " + ", ".join(f"{r.dt} ({r.dif:+})" for r in ruins)
 print(f"ok: {checagem.count()} dias, dif = 0 em todos")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 5. Metadados
+# MAGIC
+# MAGIC O `overwrite` com `overwriteSchema` apaga os comentarios das colunas; reaplica a partir de `metadados`.
+
+# COMMAND ----------
+
+# MAGIC %run ./metadados
+
+# COMMAND ----------
+
+aplicar_metadados(TABELA)

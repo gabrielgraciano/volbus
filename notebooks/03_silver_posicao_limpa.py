@@ -172,6 +172,22 @@ print(f"ok: {checagem.count()} dias, bronze = limpa + quarentena; (p, ta) unico;
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## 4b. Metadados
+# MAGIC
+# MAGIC O `overwrite` com `overwriteSchema` apaga os comentarios das colunas; reaplica a partir de `metadados`.
+
+# COMMAND ----------
+
+# MAGIC %run ./metadados
+
+# COMMAND ----------
+
+aplicar_metadados(LIMPA)
+aplicar_metadados(QUARENTENA)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 5. Relatorio
 
 # COMMAND ----------

@@ -205,6 +205,22 @@ print("ok: contagem, chaves e referencias")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## 4b. Metadados
+# MAGIC
+# MAGIC O `overwrite` com `overwriteSchema` apaga os comentarios das colunas; reaplica a partir de `metadados`.
+
+# COMMAND ----------
+
+# MAGIC %run ./metadados
+
+# COMMAND ----------
+
+for nome in [*ARQUIVOS, "versao"]:
+    aplicar_metadados(f"{ESQUEMA}.gtfs_{nome}")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 5. Relatorio (nao falha; e para saber com o que estamos lidando)
 
 # COMMAND ----------
