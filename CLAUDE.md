@@ -153,6 +153,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 - Idade da posição: mediana 22 s, p99 46 s.
 - **Posições já vêm com map matching da SPTrans:** 99,8% com erro lateral 0,00 m sobre a polilinha do shape, máximo 1,54 m. **Não é GPS bruto** — descrever como "posições publicadas pelo operador". Consequência: erro lateral não serve de controle de qualidade.
 - Frota: ~8.900 veículos em média, ~11.200 no pico.
+- **Campos `sv` e `is` no veículo (v2):** existem no JSON, mas vêm **sempre nulos** (249,7 M registros, 21/09–14/10). A API não dá velocidade; o schema da bronze não os lê.
 - Volume: ~94 MB/dia a 2 min; ~190 MB/dia a 1 min. JSON cru gz ≈ 91% do tamanho do achatado.
 
 ---
@@ -161,6 +162,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 - `GET /KMZ` (mesma sessão do login) → zip com `TA.kml`, ~156 KB (1,4 MB descomprimido). Traz **os dois sentidos**: 27/09 = 633 `Placemark` (trechos) em 244 `Folder` (corredores/vias, 127 BC + 117 CB). Variantes `/KMZ/BC`, `/KMZ/CB`, `/KMZ/Corredor`, `/KMZ/OutrasVias` são subconjuntos.
 - Por trecho: nome da via + sentido, "de X até Y", referência, **extensão (m)**, **velocidade média (km/h)**, **tempo médio de percurso**, velocidade média do corredor; geometria `LineString`. Atributo `eBC="8,4"` no `Placemark` — significado desconhecido. Os campos vêm em HTML escapado dentro de `<description>` → parse na silver.
 - **Papel:** velocidade oficial por trecho, calculada pela própria SPTrans a partir dos ônibus → validação direta da nossa velocidade inferida e, nas vias principais, candidato a trecho pronto. Não cobre a malha toda.
+- **Não está no Databricks (16/10):** vai para o Drive (`olhovivo-bronze/kmz/bronze_kmz`), mas o job diário só ingere `bronze_raw`. O notebook 00 já aceita `subpasta=kmz/bronze_kmz`. Só faz falta na `velocidade_trecho` (validação).
 - Bronze: `data/kmz/bronze_kmz/dt=YYYY-MM-DD/kmz_<UTC>.kmz` (cru, sem gzip). Auditoria com `sha256` (16 hex) → hashes repetidos = fonte não atualizou; usar para medir a frequência real e ajustar o cron. ~225 MB/dia a 1 min (hash mudou em 3,5 min no primeiro teste). `backup.sh` move após 48h.
 - Não usados (e por quê): `/Previsao*` (previsão, não observação), `/Posicao/Garagem`, `/Empresa`. **Baixar uma vez:** `/Corredor` + `/Parada/BuscarParadasPorCorredor` (quais paradas estão em corredor → atributo do KR4).
 
@@ -240,6 +242,13 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
   - `ta` até 60 s depois de `coletado_em` é normal: na v2 `coletado_em` é o início do ciclo (nome do arquivo).
   - **Linhas de sentido único (circulares, ~11% das posições):** a API manda `sl=1` e `sl=2`, mas ambos caem no único shape (erro lateral 0 m mediana, p99 < 3 m; 8 linhas, 08/10). Usam esse shape (`sentido_unico = true`); `sl` ≈ metade da volta. Na `deslocamento`, troca de `sl` nelas não é troca de viagem.
   - Fuso conferido: frota por hora em 08/10 tem picos 7–9h e 17–19h (SP). `tipo_dia` com feriados (07/09, 12/10, 02/11, 15/11, 20/11, 25/12).
+- `04_silver_posicao_rota` (16/10) → `silver.posicao_rota`: mesmo grão `(p, ta)` + `d_m` (metro no shape), `erro_lateral_m`, `n_candidatos`, `comprimento_m`. `cogroup` por `(versao_gtfs, shape_id, dt)`, ~15 min. Checagem: rota = limpa por dia; `d_m` ∈ [0, comprimento].
+  - **Shape que passa 2× pela mesma rua:** 0,7% do traçado nas linhas de dois sentidos, **41% nas de sentido único** (GTFS 12/10). Projeção guarda candidatos (até melhor erro + 10 m, > 150 m de distância ao longo da rota) e escolhe por **continuidade (Viterbi)** por ônibus: frente ≤ 80 km/h ~0; nova volta (fim → início) 50; recuo/teleporte 1000 + |Δd|; Δt > 5 min quebra. Teste 08/10 (4 circulares + 2 normais): pares incoerentes nas circulares 20,4% → 4,2%. No total, 6,3% das posições são ambíguas.
+  - Coerência nos últimos 3 dias: recuo > 30 m em 2,0% dos pares (dois sentidos) e 2,7% (sentido único); rápido > 80 km/h 0,3% / 0,7%.
+  - **Erro lateral cresce com o tempo** com o GTFS de 26/08: p99 0 m (fim/ago) → ~1,4 m (out); > 10 m em 0,01% → ~0,3%. O traçado muda aos poucos → baixar o GTFS com frequência.
+  - **Para a `deslocamento`** (não é erro de projeção): (1) manobra no terminal (`d` oscila perto de 0/fim); (2) **sentido atrasado** — o ônibus já voltou e a API ainda manda o `sl` antigo, `d` desce por minutos; (3) **eco** — a API reenvia uma posição antiga (coordenadas idênticas às de 2+ pings antes) com `ta` novo, 1,1% das posições (só ~5% dos recuos).
+- **limpa e rota vão só até 11/10**: são overwrite total fora do job diário; a bronze já tem dias depois.
+- **Metadados (16/10):** `notebooks/metadados.py` é a fonte única das descrições (catálogo, schemas, volume, todas as tabelas e colunas, com acento). Cada notebook que grava termina com `%run ./metadados` + `aplicar_metadados(tabela)`, porque `overwrite` + `overwriteSchema` apaga comentário de coluna. Tabela nova = acrescentar em `TABELAS`.
 
 ### Falta: velocidade por trecho (núcleo do KR1)
 - API **não** fornece velocidade. Derivar: `v = Δd / Δt` entre pings consecutivos do mesmo veículo, com `d` = distância ao longo do shape e `t` = `ta` da fonte.
