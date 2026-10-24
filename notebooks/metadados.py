@@ -245,6 +245,52 @@ TABELAS = {
             "comprimento_m": "Comprimento total do traçado, em metros.",
         },
     },
+    "onibus.silver.gtfs_trechos": {
+        "comentario":
+            "Trechos entre paradas consecutivas de cada traçado, na régua da posicao_rota (metro ao longo do shape). "
+            "Paradas do stop_times projetadas no shape em ordem (cada uma adiante da anterior). Chave "
+            "(versao, shape_id, trecho_seq). Trechos de ~0 m removidos. Notebook 06_silver_velocidade_trecho.",
+        "colunas": {
+            "versao": COL_VERSAO,
+            "route_id": "Linha do traçado.",
+            "direction_id": "Sentido no GTFS (0/1).",
+            "shape_id": "Traçado (gtfs_shapes).",
+            "trecho_seq": "Ordem do trecho no traçado (1 = da 1ª para a 2ª parada). Pode ter buracos onde um trecho de ~0 m saiu.",
+            "parada_de": "Parada de início do trecho (stop_id). (parada_de, parada_ate) = trecho físico, comum a várias linhas.",
+            "parada_ate": "Parada de fim do trecho (stop_id).",
+            "d_ini_m": "Metro do traçado onde o trecho começa (projeção de parada_de).",
+            "d_fim_m": "Metro do traçado onde o trecho termina (projeção de parada_ate).",
+            "comprimento_trecho_m": "d_fim_m − d_ini_m, em metros.",
+            "erro_parada_de_m": "Distância da parada de início até o traçado (paradas ficam na calçada: ~10–30 m é normal).",
+            "fora_de_ordem": "true se alguma das duas paradas não pôde ser projetada adiante da anterior (projeção suspeita).",
+            "comprimento_m": "Comprimento total do traçado, em metros.",
+        },
+    },
+    "onibus.silver.velocidade_trecho": {
+        "comentario":
+            "Velocidade comercial dos ônibus por trecho entre paradas, em janelas de 10 min (horário de SP). Cada par "
+            "ok da deslocamento rateia distância e tempo entre os trechos que atravessou (velocidade constante dentro "
+            "do par); velocidade = Σ distância / Σ tempo. Par parado conta tempo e distância 0. Notebook "
+            "06_silver_velocidade_trecho. Partição dt.",
+        "colunas": {
+            "dt": COL_DT,
+            "janela_sp": "Início da janela de 10 min, no horário de São Paulo.",
+            "tipo_dia": "util, sabado, domingo ou feriado.",
+            "route_id": "Linha.",
+            "direction_id": "Sentido no GTFS (0/1).",
+            "shape_id": "Traçado.",
+            "versao_gtfs": "Versão do GTFS usada neste dia (gtfs_versao).",
+            "trecho_seq": "Ordem do trecho no traçado (gtfs_trechos).",
+            "parada_de": "Parada de início do trecho. (parada_de, parada_ate) = trecho físico.",
+            "parada_ate": "Parada de fim do trecho.",
+            "comprimento_trecho_m": "Comprimento do trecho, em metros.",
+            "dist_m": "Distância percorrida dentro do trecho na janela, somando todos os ônibus, em metros.",
+            "tempo_s": "Tempo gasto dentro do trecho na janela, somando todos os ônibus, em segundos.",
+            "v_kmh": "Velocidade comercial = dist_m / tempo_s × 3,6 (km/h). Inclui paradas em ponto e semáforo.",
+            "n_pares": "Quantos pedaços de pares contribuíram (medida de quanto dado sustenta a velocidade).",
+            "n_onibus": "Quantos ônibus distintos passaram pelo trecho na janela.",
+        },
+    },
     "onibus.silver.deslocamento": {
         "comentario":
             "Pares de posições consecutivas do mesmo ônibus no mesmo dia: de onde para onde na régua da rota e em "
