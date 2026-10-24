@@ -178,7 +178,10 @@ if not ESCREVER:
 
     alvo = (pares.filter("NOT sentido_unico").groupBy("route_id", "shape_id").count()
             .orderBy(F.desc("count")).first())
-    m = (pares.filter((F.col("shape_id") == alvo.shape_id) & F.hour("ta_sp_ini").between(6, 9))
+    # nova_viagem fica de fora: o inicio do par esta na regua de OUTRO shape (vira um risco vertical sem sentido).
+    # As duas pontas dentro da janela: senao um buraco de horas estica o eixo.
+    m = (pares.filter((F.col("shape_id") == alvo.shape_id) & (F.col("situacao") != "nova_viagem")
+                      & F.hour("ta_sp_ini").between(6, 9) & F.hour("ta_sp_fim").between(6, 9))
          .select("p", "ta_sp_ini", "ta_sp_fim", "d_ini_m", "d_fim_m", "situacao").toPandas())
 
     cores = {"ok": "#9aa3ad", "terminal": "#2f6fb0", "recuo": "#d9480f", "nova_viagem": "#2b8a3e",
