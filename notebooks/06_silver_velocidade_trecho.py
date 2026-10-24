@@ -52,6 +52,7 @@ ESCREVER = not LINHAS
 
 LAT0, LON0, R_TERRA = -23.55, -46.63, 6_371_000.0
 VOLTA_M = 30.0        # parada pode cair ate 30 m "atras" da anterior (ruido da projecao)
+MARGEM_PARADA_M = 25  # passagens "boas" = erro ate (melhor + 25 m); entre elas, a mais proxima adiante
 JANELA_MIN = 10
 print(f"dias={DIAS or 'todos'} linhas={LINHAS or 'todas'} escrever={ESCREVER}")
 
@@ -61,8 +62,13 @@ print(f"dias={DIAS or 'todos'} linhas={LINHAS or 'todas'} escrever={ESCREVER}")
 # MAGIC ## A1. Projetar as paradas no shape, em ordem
 # MAGIC
 # MAGIC Mesma geometria do notebook 04 (plano equirretangular centrado em SP). Para cada parada, calcula a
-# MAGIC projecao em **todos** os segmentos do shape; fica com a de menor erro **entre as que estao adiante da
-# MAGIC parada anterior**. Se nenhuma estiver adiante, fica a de menor erro e a parada e marcada (`fora_de_ordem`).
+# MAGIC projecao em **todos** os segmentos do shape. Entre as que estao **adiante da parada anterior**, ficam as
+# MAGIC "boas" (erro ate o melhor + 25 m) e, entre elas, a **mais proxima adiante** — nao a de menor erro.
+# MAGIC
+# MAGIC Por que: numa linha de ida e volta pela mesma avenida, a parada do inicio da ida tambem esta a poucos
+# MAGIC metros da volta (calcada oposta), perto do fim da rota. Escolhendo so pelo erro, a projecao pulava para o
+# MAGIC fim e todas as paradas seguintes ficavam presas ali (1a versao: 23 mil trechos de 0 m, 673 shapes).
+# MAGIC Se nenhuma passagem estiver adiante, fica a de menor erro e a parada e marcada (`fora_de_ordem`).
 
 # COMMAND ----------
 
@@ -104,7 +110,8 @@ def projetar_paradas(paradas: pd.DataFrame, shp: pd.DataFrame) -> pd.DataFrame:
     for i in range(len(paradas)):
         adiante = dal[i] >= ant - VOLTA_M
         if adiante.any():
-            j = np.flatnonzero(adiante)[np.argmin(erro[i, adiante])]
+            boas = adiante & (erro[i] <= erro[i, adiante].min() + MARGEM_PARADA_M)
+            j = np.flatnonzero(boas)[np.argmin(dal[i, boas])]
             fora.append(False)
         else:
             j = int(np.argmin(erro[i]))
@@ -160,7 +167,10 @@ trechos = (proj
                    "fora_de_ordem", "comprimento_m"))
 
 zero = trechos.filter("comprimento_trecho_m < 1").count()
+total_pares_paradas = trechos.count()
 trechos = trechos.filter("comprimento_trecho_m >= 1")
+# O GTFS tem ~60 pares de paradas consecutivas a < 1 m. Muito mais que isso = projecao errada.
+assert zero < 0.005 * total_pares_paradas, f"{zero} trechos de ~0 m de {total_pares_paradas}: projecao das paradas falhou"
 
 (trechos.write.mode("overwrite").option("overwriteSchema", True).saveAsTable(TRECHOS))
 tr = spark.table(TRECHOS)
