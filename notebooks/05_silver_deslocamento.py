@@ -13,7 +13,7 @@
 # MAGIC |---|---|---|
 # MAGIC | `buraco` | Δt > 5 min | coleta perdida; interpolar seria inventar |
 # MAGIC | `nova_viagem` | mudou de shape, ou foi do fim (≥ comprimento − 300 m) para o inicio (≤ 300 m) do mesmo shape | o onibus terminou uma viagem e comecou outra (ex.: o 48874 no Term. Sapopemba). Nas linhas de sentido unico, trocar `sl` nao muda o shape: nao e viagem nova |
-# MAGIC | `terminal` | as duas pontas a ate 200 m do inicio, ou as duas a ate 200 m do fim | onibus parado ou manobrando no terminal: velocidade ~0 que nao tem a ver com transito |
+# MAGIC | `terminal` | as duas pontas a ate 200 m do inicio (ou do fim) **e** andou menos de 50 m | onibus parado ou manobrando no terminal: velocidade ~0 que nao tem a ver com transito. Teste 08/10: 91% dos pares assim tinham |Δd| < 10 m. Quem esta saindo/chegando (anda mais) fica `ok` |
 # MAGIC | `recuo` | Δd < −30 m | inclui o **sentido atrasado**: o onibus ja voltou, a API ainda manda o `sl` antigo e `d` desce por minutos |
 # MAGIC | `rapido` | > 80 km/h | implausivel para onibus urbano |
 # MAGIC | `ok` | o resto | vai para a velocidade |
@@ -51,7 +51,8 @@ ESCREVER = not LINHAS
 
 DT_MAX_S = 300        # buraco
 BORDA_M = 300.0       # fim -> inicio = nova volta (mesmo valor do notebook 04)
-TERMINAL_M = 200.0    # as duas pontas perto do inicio ou do fim = terminal
+TERMINAL_M = 200.0    # as duas pontas perto do inicio ou do fim...
+PARADO_M = 50.0       # ...e quase sem andar = terminal
 RECUO_M = 30.0
 VMAX_KMH = 80.0
 
@@ -110,8 +111,9 @@ pares = (
 
 c = F.col("comprimento_m")
 reinicio = (F.col("d_ini_m") >= c - BORDA_M) & (F.col("d_fim_m") <= BORDA_M)
-terminal = (((F.col("d_ini_m") <= TERMINAL_M) & (F.col("d_fim_m") <= TERMINAL_M))
-            | ((F.col("d_ini_m") >= c - TERMINAL_M) & (F.col("d_fim_m") >= c - TERMINAL_M)))
+terminal = ((((F.col("d_ini_m") <= TERMINAL_M) & (F.col("d_fim_m") <= TERMINAL_M))
+             | ((F.col("d_ini_m") >= c - TERMINAL_M) & (F.col("d_fim_m") >= c - TERMINAL_M)))
+            & (F.abs(F.col("dd_m")) < PARADO_M))
 
 pares = (pares.withColumn(
             "situacao",
