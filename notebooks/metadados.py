@@ -245,6 +245,41 @@ TABELAS = {
             "comprimento_m": "Comprimento total do traçado, em metros.",
         },
     },
+    "onibus.silver.deslocamento": {
+        "comentario":
+            "Pares de posições consecutivas do mesmo ônibus no mesmo dia: de onde para onde na régua da rota e em "
+            "quanto tempo. Unidade de observação da velocidade. Todo par fica, classificado em situacao; só os 'ok' "
+            "seguem para a velocidade_trecho. Ecos (posição antiga reenviada pela API) saem antes de formar os pares. "
+            "Por dia: posições da posicao_rota = pares + ecos + ônibus. Notebook 05_silver_deslocamento. Partição dt.",
+        "colunas": {
+            "dt": COL_DT,
+            "p": COL_P,
+            "route_id": "Linha da posição final do par.",
+            "direction_id": "Sentido no GTFS (0/1) da posição final do par.",
+            "shape_id": "Traçado da posição final do par. Se diferente do traçado inicial, o par é nova_viagem.",
+            "sentido_unico": "true se a linha tem um só traçado no GTFS (circulares): troca de sl não é troca de viagem.",
+            "versao_gtfs": "Versão do GTFS usada neste dia (gtfs_versao).",
+            "tipo_dia": "util, sabado, domingo ou feriado, pela data de ta_sp da posição final.",
+            "formato": COL_FORMATO,
+            "ta_ini": "Instante (UTC) da posição inicial do par.",
+            "ta_fim": "Instante (UTC) da posição final do par.",
+            "ta_sp_ini": "ta_ini no horário de São Paulo.",
+            "ta_sp_fim": "ta_fim no horário de São Paulo.",
+            "d_ini_m": "Metro da rota na posição inicial (posicao_rota.d_m).",
+            "d_fim_m": "Metro da rota na posição final (posicao_rota.d_m).",
+            "comprimento_m": "Comprimento total do traçado, em metros.",
+            "py_ini": "Latitude da posição inicial (graus).",
+            "px_ini": "Longitude da posição inicial (graus).",
+            "py_fim": "Latitude da posição final (graus).",
+            "px_fim": "Longitude da posição final (graus).",
+            "dt_s": "Tempo entre as duas posições, em segundos (ta_fim − ta_ini).",
+            "dd_m": "Distância percorrida na rota, em metros (d_fim_m − d_ini_m). Negativa = recuo.",
+            "v_kmh": "Velocidade comercial do par (dd_m / dt_s × 3,6), em km/h. Inclui paradas e semáforos.",
+            "situacao": ("Classificação do par (primeira que se aplica): buraco (Δt > 5 min), nova_viagem (mudou de "
+                         "traçado ou foi do fim para o início), terminal (as duas pontas a até 200 m do início ou "
+                         "do fim), recuo (Δd < −30 m; inclui sentido atrasado da API), rapido (> 80 km/h), ok."),
+        },
+    },
 }
 
 # COMMAND ----------
