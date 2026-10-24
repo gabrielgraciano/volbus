@@ -52,7 +52,9 @@ ESCREVER = not LINHAS
 
 LAT0, LON0, R_TERRA = -23.55, -46.63, 6_371_000.0
 VOLTA_M = 30.0        # parada pode cair ate 30 m "atras" da anterior (ruido da projecao)
-MARGEM_PARADA_M = 25  # passagens "boas" = erro ate (melhor + 25 m); entre elas, a mais proxima adiante
+MARGEM_PARADA_M = 25  # segmentos "bons" = erro ate (melhor + 25 m)
+GAP_M = 150.0         # segmentos bons a mais de 150 m ao longo da rota = passagens distintas (como no 04)
+SALTO_MAX_M = 1500.0  # paradas ficam a ~310 m: uma passagem ate 1,5 km adiante da anterior e plausivel
 JANELA_MIN = 10
 print(f"dias={DIAS or 'todos'} linhas={LINHAS or 'todas'} escrever={ESCREVER}")
 
@@ -63,7 +65,9 @@ print(f"dias={DIAS or 'todos'} linhas={LINHAS or 'todas'} escrever={ESCREVER}")
 # MAGIC
 # MAGIC Mesma geometria do notebook 04 (plano equirretangular centrado em SP). Para cada parada, calcula a
 # MAGIC projecao em **todos** os segmentos do shape. Entre as que estao **adiante da parada anterior**, ficam as
-# MAGIC "boas" (erro ate o melhor + 25 m) e, entre elas, a **mais proxima adiante** — nao a de menor erro.
+# MAGIC "boas" (erro ate o melhor + 25 m), agrupadas em **passagens** (quebra quando a distancia ao longo da rota
+# MAGIC salta > 150 m). Fica o segmento de **menor erro entre as passagens que comecam ate 1,5 km adiante** da
+# MAGIC parada anterior (paradas ficam a ~310 m); se nenhuma, o de menor erro da primeira passagem.
 # MAGIC
 # MAGIC Por que: numa linha de ida e volta pela mesma avenida, a parada do inicio da ida tambem esta a poucos
 # MAGIC metros da volta (calcada oposta), perto do fim da rota. Escolhendo so pelo erro, a projecao pulava para o
@@ -110,8 +114,13 @@ def projetar_paradas(paradas: pd.DataFrame, shp: pd.DataFrame) -> pd.DataFrame:
     for i in range(len(paradas)):
         adiante = dal[i] >= ant - VOLTA_M
         if adiante.any():
-            boas = adiante & (erro[i] <= erro[i, adiante].min() + MARGEM_PARADA_M)
-            j = np.flatnonzero(boas)[np.argmin(dal[i, boas])]
+            boas = np.flatnonzero(adiante & (erro[i] <= erro[i, adiante].min() + MARGEM_PARADA_M))
+            boas = boas[np.argsort(dal[i, boas])]
+            passagem = np.r_[0, np.cumsum(np.diff(dal[i, boas]) > GAP_M)]          # numero da passagem
+            inicio = dal[i, boas][np.r_[True, np.diff(passagem) > 0]][passagem]    # d onde cada passagem comeca
+            perto = boas[inicio <= max(ant, 0.0) + SALTO_MAX_M]
+            pool = perto if len(perto) else boas[passagem == 0]
+            j = pool[np.argmin(erro[i, pool])]
             fora.append(False)
         else:
             j = int(np.argmin(erro[i]))
