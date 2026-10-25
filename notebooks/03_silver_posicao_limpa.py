@@ -24,10 +24,24 @@
 # MAGIC a API manda `sl=1` e `sl=2`, mas as duas caem em cima do mesmo shape (erro lateral 0 m na
 # MAGIC mediana, p99 < 3 m, teste em 8 linhas em 08/10). Usam esse shape, com `sentido_unico = true`.
 # MAGIC Na `deslocamento`, troca de `sl` nessas linhas **nao** e troca de viagem.
+# MAGIC
+# MAGIC **Parametro `dias`:** vazio = todos (overwrite total); lista `AAAA-MM-DD,...` = so esses dias
+# MAGIC (`replaceWhere`); `ontem` = o dia anterior em SP (job diario). O dedupe e por dia: um `(p, ta)`
+# MAGIC repetido em dois dias seguidos (perto da meia-noite) nao e pego — raro.
 
 # COMMAND ----------
 
 from pyspark.sql import Window, functions as F
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+
+def ler_dias(valor: str) -> list[str]:
+    """'' = todos; 'ontem' = dia anterior em SP (para o job diario); senao lista AAAA-MM-DD separada por virgula."""
+    valor = valor.strip()
+    if valor == "ontem":
+        return [(datetime.now(ZoneInfo("America/Sao_Paulo")) - timedelta(days=1)).strftime("%Y-%m-%d")]
+    return [d.strip() for d in valor.split(",") if d.strip()]
 
 spark.conf.set("spark.sql.session.timeZone", "UTC")
 
@@ -41,6 +55,22 @@ IDADE_MAX_S = 300
 
 # Feriados nacionais/municipais no periodo da coleta. Onibus rodam com tabela de domingo.
 FERIADOS = ["2026-09-07", "2026-10-12", "2026-11-02", "2026-11-15", "2026-11-20", "2026-12-25"]
+
+dbutils.widgets.text("dias", "")
+DIAS = ler_dias(dbutils.widgets.get("dias"))
+print(f"dias={DIAS or 'todos'}")
+
+
+def do_periodo(df):
+    return df.filter(F.col("dt").isin(DIAS)) if DIAS else df
+
+
+def gravar(df, tabela):
+    if DIAS and spark.catalog.tableExists(tabela):
+        lista = ", ".join(f"'{d}'" for d in DIAS)
+        df.write.mode("overwrite").option("replaceWhere", f"dt IN ({lista})").saveAsTable(tabela)
+    else:
+        df.write.mode("overwrite").option("overwriteSchema", True).partitionBy("dt").saveAsTable(tabela)
 
 # COMMAND ----------
 
@@ -84,7 +114,7 @@ lat, lon = CAIXA_SP["lat"], CAIXA_SP["lon"]
 w_dup = Window.partitionBy("p", "ta").orderBy("coletado_em", "arquivo")
 
 marcado = (
-    spark.table(BRONZE)
+    do_periodo(spark.table(BRONZE))
     .withColumn("ordem", F.row_number().over(w_dup))
     .withColumn("idade_s", F.col("coletado_em").cast("long") - F.col("ta").cast("long"))
     .join(F.broadcast(versao), F.col("dt").cast("date").between(
@@ -134,10 +164,8 @@ limpa = (
 quarentena = (marcado.filter(F.col("motivo").isNotNull())
               .select(*spark.table(BRONZE).columns, "motivo"))
 
-(quarentena.write.mode("overwrite").option("overwriteSchema", True)
-    .partitionBy("dt").saveAsTable(QUARENTENA))
-(limpa.write.mode("overwrite").option("overwriteSchema", True)
-    .partitionBy("dt").saveAsTable(LIMPA))
+gravar(quarentena, QUARENTENA)
+gravar(limpa, LIMPA)
 
 # COMMAND ----------
 
@@ -150,7 +178,7 @@ quarentena = (marcado.filter(F.col("motivo").isNotNull())
 
 # COMMAND ----------
 
-por_dia = lambda t, nome: spark.table(t).groupBy("dt").agg(F.count("*").alias(nome))
+por_dia = lambda t, nome: do_periodo(spark.table(t)).groupBy("dt").agg(F.count("*").alias(nome))
 checagem = (por_dia(BRONZE, "bronze")
             .join(por_dia(LIMPA, "limpa"), "dt", "full")
             .join(por_dia(QUARENTENA, "quarentena"), "dt", "full")
@@ -160,10 +188,10 @@ checagem = (por_dia(BRONZE, "bronze")
 display(checagem)
 
 problemas = [f"{r.dt}: dif {r.dif:+}" for r in checagem.filter("dif != 0").collect()]
-repetidas = spark.table(LIMPA).groupBy("p", "ta").count().filter("count > 1").count()
+repetidas = do_periodo(spark.table(LIMPA)).groupBy("p", "ta").count().filter("count > 1").count()
 if repetidas:
     problemas.append(f"{repetidas} (p, ta) repetidos na limpa")
-sem_shape = spark.table(LIMPA).filter(F.col("shape_id").isNull() | F.col("ta_sp").isNull()).count()
+sem_shape = do_periodo(spark.table(LIMPA)).filter(F.col("shape_id").isNull() | F.col("ta_sp").isNull()).count()
 if sem_shape:
     problemas.append(f"{sem_shape} posicoes limpas sem shape_id/ta_sp")
 assert not problemas, "\n".join(problemas)
@@ -192,13 +220,13 @@ aplicar_metadados(QUARENTENA)
 
 # COMMAND ----------
 
-total = spark.table(BRONZE).groupBy("formato").agg(F.count("*").alias("bronze"))
-display(spark.table(QUARENTENA).groupBy("formato", "motivo").agg(F.count("*").alias("n"))
+total = do_periodo(spark.table(BRONZE)).groupBy("formato").agg(F.count("*").alias("bronze"))
+display(do_periodo(spark.table(QUARENTENA)).groupBy("formato", "motivo").agg(F.count("*").alias("n"))
         .join(total, "formato")
         .withColumn("pct", F.round(100 * F.col("n") / F.col("bronze"), 3))
         .orderBy("formato", F.desc("n")))
 
-display(spark.table(LIMPA).groupBy("tipo_dia").agg(
+display(do_periodo(spark.table(LIMPA)).groupBy("tipo_dia").agg(
             F.countDistinct(F.to_date("ta_sp")).alias("dias"),
             F.count("*").alias("posicoes"),
             F.round(100 * F.avg(F.col("sentido_unico").cast("double")), 2).alias("pct_sentido_unico"))

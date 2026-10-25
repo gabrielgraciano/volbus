@@ -45,6 +45,16 @@ import math
 
 import numpy as np
 from pyspark.sql import Window, functions as F, types as T
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+
+def ler_dias(valor: str) -> list[str]:
+    """'' = todos; 'ontem' = dia anterior em SP (para o job diario); senao lista AAAA-MM-DD separada por virgula."""
+    valor = valor.strip()
+    if valor == "ontem":
+        return [(datetime.now(ZoneInfo("America/Sao_Paulo")) - timedelta(days=1)).strftime("%Y-%m-%d")]
+    return [d.strip() for d in valor.split(",") if d.strip()]
 
 spark.conf.set("spark.sql.session.timeZone", "UTC")
 
@@ -63,6 +73,15 @@ BORDA_M = 300.0        # do fim para o inicio = nova volta no mesmo shape
 DT_MAX_S = 300         # acima disso, sem continuidade
 P_REINICIO = 50.0
 P_INCOERENTE = 1000.0
+
+# vazio = todos (overwrite total); lista = so esses dias (replaceWhere); 'ontem' = job diario
+dbutils.widgets.text("dias", "")
+DIAS = ler_dias(dbutils.widgets.get("dias"))
+print(f"dias={DIAS or 'todos'}")
+
+
+def do_periodo(df):
+    return df.filter(F.col("dt").isin(DIAS)) if DIAS else df
 
 # COMMAND ----------
 
@@ -198,7 +217,7 @@ def projetar(pos, shp):
                       comprimento_m=float(sd[-1]))[COLUNAS]
 
 
-pos = spark.table(LIMPA)
+pos = do_periodo(spark.table(LIMPA))
 grupos = pos.select("versao_gtfs", "shape_id", "dt").distinct()
 pontos = (spark.table("onibus.silver.gtfs_shapes")
           .select(F.col("versao").alias("versao_gtfs"), "shape_id", "shape_pt_sequence",
@@ -209,8 +228,11 @@ rota = (pos.groupBy("versao_gtfs", "shape_id", "dt")
         .cogroup(pontos.groupBy("versao_gtfs", "shape_id", "dt"))
         .applyInPandas(projetar, schema=SCHEMA))
 
-(rota.write.mode("overwrite").option("overwriteSchema", True)
-     .partitionBy("dt").saveAsTable(ROTA))
+if DIAS and spark.catalog.tableExists(ROTA):
+    lista = ", ".join(f"'{d}'" for d in DIAS)
+    rota.write.mode("overwrite").option("replaceWhere", f"dt IN ({lista})").saveAsTable(ROTA)
+else:
+    rota.write.mode("overwrite").option("overwriteSchema", True).partitionBy("dt").saveAsTable(ROTA)
 
 # COMMAND ----------
 
@@ -222,11 +244,11 @@ rota = (pos.groupBy("versao_gtfs", "shape_id", "dt")
 
 # COMMAND ----------
 
-por_dia = lambda t, nome: spark.table(t).groupBy("dt").agg(F.count("*").alias(nome))
+por_dia = lambda t, nome: do_periodo(spark.table(t)).groupBy("dt").agg(F.count("*").alias(nome))
 checagem = (por_dia(LIMPA, "limpa").join(por_dia(ROTA, "rota"), "dt", "full").fillna(0)
             .withColumn("dif", F.col("rota") - F.col("limpa")).orderBy("dt"))
 problemas = [f"{r.dt}: dif {r.dif:+}" for r in checagem.filter("dif != 0").collect()]
-fora = spark.table(ROTA).filter(F.col("d_m").isNull() | (F.col("d_m") < 0)
+fora = do_periodo(spark.table(ROTA)).filter(F.col("d_m").isNull() | (F.col("d_m") < 0)
                                 | (F.col("d_m") > F.col("comprimento_m") + 1)).count()
 if fora:
     problemas.append(f"{fora} posicoes sem d_m ou fora do shape")

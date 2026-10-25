@@ -35,6 +35,16 @@ import math
 import numpy as np
 import pandas as pd
 from pyspark.sql import functions as F, types as T
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+
+def ler_dias(valor: str) -> list[str]:
+    """'' = todos; 'ontem' = dia anterior em SP (para o job diario); senao lista AAAA-MM-DD separada por virgula."""
+    valor = valor.strip()
+    if valor == "ontem":
+        return [(datetime.now(ZoneInfo("America/Sao_Paulo")) - timedelta(days=1)).strftime("%Y-%m-%d")]
+    return [d.strip() for d in valor.split(",") if d.strip()]
 
 spark.conf.set("spark.sql.session.timeZone", "UTC")
 
@@ -46,7 +56,7 @@ VEL = "onibus.silver.velocidade_trecho"
 # e recalculada). Producao: linhas vazio -> grava; dias vazio = todos (overwrite), senao replaceWhere.
 dbutils.widgets.text("dias", "2026-10-08")
 dbutils.widgets.text("linhas", "2290-10,6000-10,516N-10,4113-10")
-DIAS = [d.strip() for d in dbutils.widgets.get("dias").split(",") if d.strip()]
+DIAS = ler_dias(dbutils.widgets.get("dias"))   # tambem aceita "ontem" (job diario)
 LINHAS = [l.strip() for l in dbutils.widgets.get("linhas").split(",") if l.strip()]
 ESCREVER = not LINHAS
 
