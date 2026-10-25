@@ -183,7 +183,8 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 
 - **Sistema certo:** `sibh.daee.sp.gov.br` → telemetria, granularidade **"Coleta" (10 min)**, exporta CSV, **10 postos por consulta**. robots.txt bloqueia automação.
 - **Sistema errado (não usar):** `hidrologia.spaguas.sp.gov.br` — rede convencional, chuva diária acumulada 7h–7h, série 1937–2023.
-- Formato: `Prefixo,Nome,TipoPosto,Data,Valor,Valor2`, `Data` = `YYYY/MM/DD HH:MM` (horário local), **`Valor` = incremento no intervalo** (não acumulado; sem reset a tratar).
+- Formato: `Prefixo,Nome,TipoPosto,Data,Valor,Valor2`, `Data` = `YYYY/MM/DD HH:MM` **em UTC** (corrigido em 25/10: consulta de 00:00 SP começa às 03:00), **`Valor` = incremento no intervalo** (não acumulado). Há 15 negativos (correção/manutenção do pluviômetro) → flag, não chuva.
+- **Extração completa em 25/10** (01/08–25/10): inventário, verificação e plano de tratamento em **`docs/chuva_sibh.md`** — fonte de verdade da chuva.
 - **Coordenadas:** obtidas pelo DevTools — endpoint XHR `stations?serializer=complete&station_type_id=2` (JSON do estado inteiro). **Ainda não validadas:** converter para decimal e checar caixa de SP (lat −24,01 a −23,35; lon −46,83 a −46,36).
 
 ### Extração
