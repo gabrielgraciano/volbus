@@ -419,12 +419,12 @@ Feita sobre os arquivos em `Downloads/dados_chuva/` antes do upload. Manifesto c
 
 ### O que NÃO confere (corrigir antes da silver)
 
-1. **Falta o arquivo da repescagem** `sibh_data_ckht0gjj.csv` (postos `1000868` e `527`). Não está na pasta. Com ele: 141 postos; **sem ele: 139**.
+1. ~~Falta o arquivo da repescagem~~ — `sibh_data_ckht0gjj.csv` acrescentado em 25/10 (23.820 linhas, `1000868` e `527`, período completo). **141 postos.**
 2. **Há 15 valores negativos** (a seção 1 diz "zero negativos"). Em 6 postos DAEE: `856` (−31,6; −13,6; −0,6), `804` (8 leituras, até −19,4), `275` (−7,4), `283` (−6,0), `5` (−1,1; −2,1), `1000845` (−0,25). Quase todos entre 10h e 13h UTC (7h–10h SP), dias depois de chuva forte — padrão de **correção/manutenção do pluviômetro** (esvaziamento), não de chuva. Tratamento: flag `f_negativo`, mm = nulo; não descontar dos acumulados.
 3. **Pico de 35,0 mm numa leitura de 10 min** (`E3-325`, 01/09 14:50 UTC) = 210 mm/h. Acima do limite físico sugerido na 5.2 (30 mm/10 min). Flag `f_pico_implausivel` e conferir com os vizinhos quando houver coordenadas.
-4. **Checagem de fuso pelo pico do fim da tarde: inconclusiva.** No período, a chuva total por hora concentra-se de madrugada (pico 4h–6h no relógio do arquivo = 1h–3h SP se UTC), porque set/2026 foi dominado por chuva frontal persistente, não convectiva. A evidência de UTC continua sendo a da seção 1 (consulta de 00:00 SP começa às 03:00; downloads às ~17h SP terminam às ~20–21h). Conferir de novo na gold, cruzando com a queda de velocidade dos ônibus. **`CLAUDE.md` §5 dizia "horário local" — está errado; corrigido para UTC.**
+4. **Prova de UTC pelos horários dos arquivos** (a mais direta): o Windows grava o horário de salvamento em horário de Brasília. `sibh_data_jp9bz64.csv` foi salvo às **18:04** e termina em `21:00`; `sibh_data_ckht0gjj.csv`, salvo às **18:55**, termina em `21:40`. Se `Data` fosse horário de Brasília, os arquivos teriam medições de 3 h no futuro. Em UTC, 21:00 = 18:00 e 21:40 = 18:40 — a última leitura antes de cada download.
+5. **Checagem de fuso pelo pico do fim da tarde: inconclusiva.** No período, a chuva total por hora concentra-se de madrugada (pico 4h–6h no relógio do arquivo = 1h–3h SP se UTC), porque set/2026 foi dominado por chuva frontal persistente, não convectiva. A evidência de UTC continua sendo a da seção 1 (consulta de 00:00 SP começa às 03:00; downloads às ~17h SP terminam às ~20–21h). Conferir de novo na gold, cruzando com a queda de velocidade dos ônibus. **`CLAUDE.md` §5 dizia "horário local" — está errado; corrigido para UTC.**
 
 ### Faltando para a silver
 
 - **Coordenadas dos postos** (JSON `stations?serializer=complete&station_type_id=2` do DevTools do SIBH). O `coordenadas_postos.csv` do repositório está com lat/lon vazios.
-- O arquivo da repescagem (item 1).
