@@ -245,6 +245,64 @@ TABELAS = {
             "comprimento_m": "Comprimento total do traçado, em metros.",
         },
     },
+    "onibus.bronze.chuva_sibh": {
+        "comentario":
+            "Leituras de chuva do SIBH (DAEE/SP Águas), telemetria, como vieram nos CSVs exportados à mão: 141 postos do "
+            "município, 01/08–25/10/2026. Uma linha por leitura. Arquivos e verificação: docs/chuva_sibh.md e "
+            "manifesto.csv no volume (chuva/sibh/download=2026-10-25). Notebook 07_silver_chuva.",
+        "colunas": {
+            "prefixo": "Código do posto no SIBH. Texto (há E3-326, A701, 355030873A, 5).",
+            "nome": "Nome como no CSV: 'Município (Nome do posto)'.",
+            "instante_utc": "Instante da leitura, em UTC (o campo Data do SIBH é UTC).",
+            "mm": "Chuva em mm desde a leitura anterior do mesmo posto (incremento). 15 negativos = manutenção do pluviômetro.",
+            "arquivo": "CSV de origem (ver manifesto.csv).",
+            "data_original": "Campo Data como veio, AAAA/MM/DD HH:MM.",
+        },
+    },
+    "onibus.silver.chuva_10min": {
+        "comentario":
+            "Chuva por posto numa grade comum de 10 min, em UTC. Cada leitura é repartida igualmente entre os slots de "
+            "10 min desde a leitura anterior (até 60 min; mais que isso, os slots anteriores ficam faltantes). Nada é "
+            "apagado: problemas viram flags. Soma de mm por posto = soma das leituras não negativas da bronze. "
+            "Notebook 07_silver_chuva. Partição dt (dia de SP).",
+        "colunas": {
+            "prefixo": "Código do posto (silver.postos).",
+            "slot_utc": "Início do slot de 10 min, em UTC. O slot é [slot_utc, slot_utc + 10 min).",
+            "slot_sp": "slot_utc no horário de São Paulo.",
+            "dt": "Dia de São Paulo do slot, AAAA-MM-DD. Partição.",
+            "mm": "Chuva no slot, em mm. Nulo = faltante ou negativo — nunca usar como 0.",
+            "resolucao_min": ("Intervalo coberto pela leitura que gerou o valor: 10 = medido no slot; 60 = leitura horária "
+                              "repartida em 6 slots (rede CEMADEN quando seca, INMET)."),
+            "f_faltante": "Nenhuma leitura cobre o slot.",
+            "f_negativo": "A leitura que cobre o slot era negativa (manutenção do pluviômetro); mm nulo.",
+            "f_intervalo_longo": "Valor veio de uma leitura que cobre mais de 10 min (não se sabe em qual dos 10 min choveu).",
+            "f_pico_implausivel": "Mais de 30 mm no slot (180 mm/h): conferir com os vizinhos antes de usar.",
+        },
+    },
+    "onibus.silver.postos": {
+        "comentario":
+            "Postos de chuva do SIBH no município: coordenadas (stations.json do SIBH), rede, operador e qualidade no "
+            "período com ônibus (desde 25/08). status não apaga nada: a gold escolhe quais postos usar. Notebook 07_silver_chuva.",
+        "colunas": {
+            "prefixo": "Código do posto no SIBH.",
+            "nome": "Nome do posto (dos CSVs; o JSON tem acentos corrompidos).",
+            "rede": "daee (grade de 10 min), cemaden (IDs 3550308xx: reporta por evento, 1/h quando seco) ou inmet (horária).",
+            "operador": "Dono do posto segundo o SIBH: SAISP, SP ÁGUAS, SABESP, ANA, CEMADEN, INMET.",
+            "lat": "Latitude (graus decimais).",
+            "lon": "Longitude (graus decimais).",
+            "resolucao_mediana_min": "Mediana de resolucao_min dos slots: 10 = medido a cada 10 min.",
+            "completude": "Fração dos slots de 10 min com valor (não faltante, não negativo) desde 25/08.",
+            "maior_lacuna_h": "Maior sequência de slots faltantes desde 25/08, em horas.",
+            "mm_total": "Chuva total desde 25/08, em mm.",
+            "chuva_1209_mm": "Chuva em 12/09 (SP), dia de chuva forte na cidade inteira. 0 com dado = posto quebrado.",
+            "razao_vizinhos": "mm_total / mediana do mm_total dos 5 vizinhos mais próximos com completude >= 90%.",
+            "dist_media_vizinhos_km": "Distância média aos 5 vizinhos usados na razão, em km.",
+            "n_slots_negativos": "Slots marcados f_negativo desde 25/08.",
+            "n_picos": "Slots marcados f_pico_implausivel desde 25/08.",
+            "status": ("Primeiro que se aplica: quebrado (razao < 0,4 ou 0 mm em 12/09 com dado), suspeito (razao > 2,0), "
+                       "lacunar (completude < 90%), ok."),
+        },
+    },
     "onibus.silver.gtfs_trechos": {
         "comentario":
             "Trechos entre paradas consecutivas de cada traçado, na régua da posicao_rota (metro ao longo do shape). "
