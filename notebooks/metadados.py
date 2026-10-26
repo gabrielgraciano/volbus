@@ -383,7 +383,8 @@ TABELAS = {
             "v_kmh": "Velocidade comercial do par (dd_m / dt_s × 3,6), em km/h. Inclui paradas e semáforos.",
             "situacao": ("Classificação do par (primeira que se aplica): buraco (Δt > 5 min), nova_viagem (mudou de "
                          "traçado ou foi do fim para o início), terminal (as duas pontas a até 200 m do início ou "
-                         "do fim e |Δd| < 50 m), recuo (Δd < −30 m; inclui sentido atrasado da API), rapido (> 80 km/h), ok."),
+                         "do fim e |Δd| < 50 m), recuo (Δd < −30 m; inclui sentido atrasado da API), rapido (> 80 km/h), parado_longo (par ok dentro de "
+                         "sequência parada |Δd| < 10 m que soma >= 20 min: frota estacionada fora do terminal), ok."),
         },
     },
 }

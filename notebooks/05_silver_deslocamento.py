@@ -16,7 +16,16 @@
 # MAGIC | `terminal` | as duas pontas a ate 200 m do inicio (ou do fim) **e** andou menos de 50 m | onibus parado ou manobrando no terminal: velocidade ~0 que nao tem a ver com transito. Teste 08/10: 91% dos pares assim tinham |Δd| < 10 m. Quem esta saindo/chegando (anda mais) fica `ok` |
 # MAGIC | `recuo` | Δd < −30 m | inclui o **sentido atrasado**: o onibus ja voltou, a API ainda manda o `sl` antigo e `d` desce por minutos |
 # MAGIC | `rapido` | > 80 km/h | implausivel para onibus urbano |
+# MAGIC | `parado_longo` | par que seria `ok`, dentro de uma sequencia de pares parados (|Δd| < 10 m) do mesmo onibus que soma **≥ 20 min** | frota estacionada fora do terminal: garagem e ponto de regulagem no meio da rota, area de espera a ~400 m da ponta (ver abaixo) |
 # MAGIC | `ok` | o resto | vai para a velocidade |
+# MAGIC
+# MAGIC **Por que `parado_longo` (investigacao de 25/10, 13–17/10):** a velocidade media caia de madrugada (12,5 km/h
+# MAGIC as 2h) quando deveria ser a mais alta. As 2h, 53% do tempo dos pares `ok` era de onibus parado, enquanto quem
+# MAGIC andava fazia 27 km/h. De madrugada, 62% do tempo parado estava em paradas ≥ 20 min, 2/3 delas no meio da rota
+# MAGIC (~3 km das pontas). Sem elas: 2h 12,5 → 22,3 km/h; 11h 13,7 → 14,9 (espera entre viagens tambem inflava o meio
+# MAGIC do dia); picos quase nao mudam (18h 12,1 → 12,4). **Por que 20 e nao 10 min:** onibus em transito quase nunca
+# MAGIC fica 20 min sem andar nada, mas um alagamento pode prende-lo 10–20 min — e isso e o sinal do projeto. A situacao
+# MAGIC fica na tabela: da para testar a sensibilidade na analise de chuva.
 # MAGIC
 # MAGIC **O que NAO e descartado:** onibus parado ou lento **no meio da rota**. Velocidade ~0 num engarrafamento
 # MAGIC e exatamente o sinal que queremos medir com e sem chuva. (O artigo de Niteroi corta < 2 km/h — aqui nao.)
@@ -65,6 +74,8 @@ TERMINAL_M = 200.0    # as duas pontas perto do inicio ou do fim...
 PARADO_M = 50.0       # ...e quase sem andar = terminal
 RECUO_M = 30.0
 VMAX_KMH = 80.0
+PARADO_LONGO_M = 10.0     # |Δd| abaixo disso = parado...
+PARADO_LONGO_S = 20 * 60  # ...e a sequencia parada soma >= 20 min = parado_longo
 
 print(f"dias={DIAS or 'todos'} linhas={LINHAS or 'todas'} escrever={ESCREVER}")
 
@@ -136,6 +147,17 @@ pares = (pares.withColumn(
              .otherwise("ok"))
          .drop("shape_ini"))
 
+# parado_longo: entre os 'ok', sequencias de pares parados do mesmo onibus. Toda vez que aparece um par que NAO e
+# (ok e parado), comeca uma sequencia nova (soma acumulada). Sequencia parada que soma >= 20 min -> parado_longo.
+wp = Window.partitionBy("p", "dt").orderBy("ta_ini")
+parado = (F.col("situacao") == "ok") & (F.abs(F.col("dd_m")) < PARADO_LONGO_M)
+pares = (pares.withColumn("_parado", parado)
+         .withColumn("_seq", F.sum((~F.col("_parado")).cast("int")).over(wp))
+         .withColumn("_dur_s", F.sum(F.when(F.col("_parado"), F.col("dt_s"))).over(Window.partitionBy("p", "dt", "_seq")))
+         .withColumn("situacao", F.when(F.col("_parado") & (F.col("_dur_s") >= PARADO_LONGO_S), "parado_longo")
+                                  .otherwise(F.col("situacao")))
+         .drop("_parado", "_seq", "_dur_s"))
+
 # COMMAND ----------
 
 # MAGIC %md
@@ -195,7 +217,7 @@ if not ESCREVER:
          .select("p", "ta_sp_ini", "ta_sp_fim", "d_ini_m", "d_fim_m", "situacao").toPandas())
 
     cores = {"ok": "#9aa3ad", "terminal": "#2f6fb0", "recuo": "#d9480f", "nova_viagem": "#2b8a3e",
-             "buraco": "#7048e8", "rapido": "#e8590c"}
+             "buraco": "#7048e8", "rapido": "#e8590c", "parado_longo": "#c2255c"}
     fig, ax = plt.subplots(figsize=(14, 7))
     # cada par vira um segmento (hora_ini, km_ini) -> (hora_fim, km_fim); um LineCollection por situacao
     for sit, g in m.groupby("situacao"):
