@@ -233,7 +233,7 @@ print(f"ok: {n_postos} postos, slots unicos e alinhados, chuva conservada em tod
 # MAGIC   vezes (ex.: `1002855` e `1001855`, Corrego Itupu). A gold deve usar so um.
 # MAGIC - `chuva_1209_mm` = total em 12/09 (SP), dia de chuva forte em toda a cidade: posto que marca 0 esta quebrado.
 # MAGIC
-# MAGIC **Status** (primeiro que se aplica): `quebrado` (razao < 0,4, ou 0 mm em 12/09 tendo dado), `suspeito`
+# MAGIC **Status** (primeiro que se aplica): `sem_dado` (nenhuma leitura desde 25/08), `quebrado` (razao < 0,4, ou 0 mm em 12/09 tendo dado), `suspeito`
 # MAGIC (razao > 2,0), `lacunar` (completude < 90%), `ok`. Status nao apaga nada: a gold escolhe quais usar.
 
 # COMMAND ----------
@@ -256,7 +256,7 @@ falt["bloco"] = (falt.f_faltante != falt.groupby("prefixo").f_faltante.shift()).
 lac = (falt[falt.f_faltante].groupby(["prefixo", "bloco"]).size().groupby("prefixo").max() * 10 / 60)
 q["maior_lacuna_h"] = q.prefixo.map(lac).fillna(0.0).round(1)
 
-q = postos.merge(q, on="prefixo")
+q = postos.merge(q, on="prefixo", how="left")   # left: posto sem leitura desde 25/08 fica, como sem_dado
 
 
 def dist_km(lat1, lon1, lat2, lon2):
@@ -293,10 +293,11 @@ for a in q.itertuples():
             q.loc[q.prefixo == a.prefixo, "duplicata_de"] = b.prefixo
 
 q["status"] = np.select(
-    [(q.razao_vizinhos < RAZAO_MIN) | ((q.chuva_1209_mm.fillna(0) == 0) & (q.slots_1209 > 0)),
+    [q.completude.isna(),
+     (q.razao_vizinhos < RAZAO_MIN) | ((q.chuva_1209_mm.fillna(0) == 0) & (q.slots_1209 > 0)),
      q.razao_vizinhos > RAZAO_MAX,
      q.completude < COMPLETUDE_MIN],
-    ["quebrado", "suspeito", "lacunar"], default="ok")
+    ["sem_dado", "quebrado", "suspeito", "lacunar"], default="ok")
 
 cols = ["prefixo", "nome", "rede", "operador", "lat", "lon", "resolucao_mediana_min", "completude", "maior_lacuna_h",
         "mm_total", "chuva_1209_mm", "razao_vizinhos", "dist_media_vizinhos_km", "n_slots_negativos", "n_picos",

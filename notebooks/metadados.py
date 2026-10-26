@@ -301,7 +301,7 @@ TABELAS = {
             "dist_media_vizinhos_km": "Distância média aos 5 vizinhos usados na razão, em km.",
             "n_slots_negativos": "Slots marcados f_negativo desde 25/08.",
             "n_picos": "Slots marcados f_pico_implausivel desde 25/08.",
-            "status": ("Primeiro que se aplica: quebrado (razao < 0,4 ou 0 mm em 12/09 com dado), suspeito (razao > 2,0), "
+            "status": ("Primeiro que se aplica: sem_dado (nenhuma leitura desde 25/08), quebrado (razao < 0,4 ou 0 mm em 12/09 com dado), suspeito (razao > 2,0), "
                        "lacunar (completude < 90%), ok."),
         },
     },
