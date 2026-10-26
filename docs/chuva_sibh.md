@@ -428,3 +428,36 @@ Feita sobre os arquivos em `Downloads/dados_chuva/` antes do upload. Manifesto c
 ### Faltando para a silver
 
 - **Coordenadas dos postos** (JSON `stations?serializer=complete&station_type_id=2` do DevTools do SIBH). O `coordenadas_postos.csv` do repositório está com lat/lon vazios.
+
+---
+
+## 10. Silver da chuva no Databricks (25/10/2026)
+
+Notebook `07_silver_chuva`. Dados crus no volume: `/Volumes/onibus/bronze/raw/chuva/sibh/download=2026-10-25/` (18 CSVs + `stations.json` + `manifesto.csv`).
+
+| Tabela | O que é |
+|---|---|
+| `onibus.bronze.chuva_sibh` | leituras como vieram (1.124.746 linhas = manifesto, sem duplicata) |
+| `onibus.silver.chuva_10min` | grade de 10 min em UTC por posto; cada leitura repartida nos slots desde a anterior (até 60 min); faltante = nulo, nunca 0; flags `f_faltante`, `f_negativo`, `f_intervalo_longo`, `f_pico_implausivel` |
+| `onibus.silver.postos` | 141 postos: coordenadas (`stations.json`, todas na caixa de SP), rede, operador, qualidade desde 25/08, `duplicata_de`, `status` |
+
+**Redes e operadores** (do `stations.json`): DAEE = SAISP 56, SP Águas 17, Sabesp 8, ANA 2; **os `3550308xx` são do CEMADEN** (não da prefeitura/CGE, como estava escrito antes); INMET 2. Coordenadas: DAEE com 4+ casas decimais; CEMADEN com 3 (~100 m; zeros à direita cortados no JSON).
+
+**Conservação:** soma de mm por posto na grade = soma das leituras não negativas da bronze, em 139 postos exato; em `5` (−1,1 mm) e `804` (−0,2 mm) uma leitura negativa caiu no mesmo slot de uma positiva e o slot inteiro ficou nulo.
+
+**Status** (primeiro que se aplica; desde 25/08): `quebrado` = razão contra os 5 vizinhos confiáveis < 0,4, ou 0 mm em 12/09 tendo dado; `suspeito` = razão > 2,0; `lacunar` = completude < 90%; `ok`.
+
+| Rede | ok | lacunar | quebrado | suspeito |
+|---|---|---|---|---|
+| DAEE | 71 | 5 | 6 | 0 |
+| CEMADEN | 23 | 5 | 27 | 0 |
+| INMET | 1 | 1 | 0 | 0 |
+| **Total** | **95** | **11** | **33** | **0** |
+
+Os 95 `ok` cobrem a cidade sem buracos grandes (mapa no notebook). Mediana do total dos `ok`: 528 mm desde 25/08.
+
+**Duas lições do QC:**
+1. **Vizinhos quebrados contaminam a comparação espacial.** Na 1ª versão (uma passada), 5 postos DAEE normais (485–624 mm) saíram `suspeito` porque os vizinhos de referência eram postos CEMADEN quebrados — completude alta, mas leituras zeradas. Corrigido com duas passadas: a 2ª só usa vizinhos que ficaram dentro de [0,4; 2,0] na 1ª. Efeito: 4 viraram `ok`, 1 virou `lacunar` (`1000853`, completude 85%), e o `108` (196 mm), que os vizinhos quebrados "salvavam", virou `quebrado`.
+2. **Mesmo pluviômetro cadastrado duas vezes:** `1002855` ("GU219 - Córrego Itupu") e `1001855` ("Córrego Itupu") estão a 0 m um do outro com o mesmo total (574,2 mm). `duplicata_de` marca o `1002855`; a gold deve usar só um.
+
+**Para a gold:** usar `status = 'ok'` e `duplicata_de IS NULL` (94 postos) como padrão; testar sensibilidade incluindo os `lacunar`. A chuva **não** está no job diário: só muda quando houver novo download manual do SIBH.

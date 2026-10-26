@@ -185,6 +185,7 @@ Partições por **data local (America/Sao_Paulo)**; timestamps em **UTC**.
 - **Sistema errado (não usar):** `hidrologia.spaguas.sp.gov.br` — rede convencional, chuva diária acumulada 7h–7h, série 1937–2023.
 - Formato: `Prefixo,Nome,TipoPosto,Data,Valor,Valor2`, `Data` = `YYYY/MM/DD HH:MM` **em UTC** (corrigido em 25/10: consulta de 00:00 SP começa às 03:00), **`Valor` = incremento no intervalo** (não acumulado). Há 15 negativos (correção/manutenção do pluviômetro) → flag, não chuva.
 - **Extração completa em 25/10** (01/08–25/10): inventário, verificação e plano de tratamento em **`docs/chuva_sibh.md`** — fonte de verdade da chuva.
+- **Silver da chuva no Databricks (25/10):** notebook `07_silver_chuva` → `bronze.chuva_sibh` (= manifesto), `silver.chuva_10min` (grade 10 min UTC, flags, conservação ok), `silver.postos` (141 com coordenadas do `stations.json`; **95 ok, 11 lacunar, 33 quebrado** — CEMADEN concentra os quebrados: 27). Rede `3550308xx` = **CEMADEN**, não CGE. `1002855` = duplicata de `1001855`. Padrão para a gold: `status='ok' AND duplicata_de IS NULL` (94 postos). Fora do job diário (download manual). Detalhes: `docs/chuva_sibh.md` §10.
 - **Coordenadas:** obtidas pelo DevTools — endpoint XHR `stations?serializer=complete&station_type_id=2` (JSON do estado inteiro). **Ainda não validadas:** converter para decimal e checar caixa de SP (lat −24,01 a −23,35; lon −46,83 a −46,36).
 
 ### Extração
