@@ -13,7 +13,7 @@
 
 - **Gabriel Graciano Dias** — Estatística IME-USP. Projeto vinculado a **MAE0350**.
 - **Rafael** — mentor, reunião semanal às segundas; comunicação intermediária por WhatsApp.
-- **Prazo:** ~30/out/2026, flexível até novembro.
+- **Prazo:** era ~30/out/2026; **estendido** (confirmado pelo Gabriel em 26/10; nova data a definir com o Rafael). Gold sem pressa: mesmo cuidado da silver.
 - **Estilo de trabalho preferido:** direto, tecnicamente preciso, sem floreio; honestidade acima de concordância; saídas executáveis.
 
 ---
