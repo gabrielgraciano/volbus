@@ -135,6 +135,27 @@ Há transbordamento (o congestionamento se espalha para onde não chove), mas em
 
 Há um **dado faltante informativo pequeno**: com chuva muito forte, 4% menos trechos têm dado. Os piores momentos somem um pouco da amostra, então o efeito fica levemente **subestimado** — mais uma razão para ler os efeitos como limites inferiores e para analisar o número de passagens como desfecho (2.9).
 
+## 1.10 Robustez da primeira estimativa (26/10)
+
+Mesmas razões da 1.4, agora com **intervalo de confiança por bootstrap de dias** (2.000 reamostras de dias inteiros), **jackknife** (tirando um dia por vez) e separando setembro × outubro e o período a 1 min (21/09–24/10). "Forte+" = ≥ 10 mm/h.
+
+| Classe | Período | Dias com a classe | Razão | IC 95% | Jackknife (mín–máx) | Set. | Out. | Só 1 min |
+|---|---|---|---|---|---|---|---|---|
+| pós-chuva | fora do pico tarde | 41 | 0,991 | 0,980–1,001 | 0,988–0,993 | 0,980 | 1,008 | 1,007 |
+| fraca | fora do pico tarde | 39 | 0,967 | 0,951–0,981 | 0,963–0,970 | 0,962 | 0,976 | 0,979 |
+| moderada | fora do pico tarde | 19 | 0,950 | 0,932–0,971 | 0,943–0,954 | 0,949 | 0,958 | 0,947 |
+| forte+ | fora do pico tarde | 14 | 0,916 | 0,901–0,955 | 0,912–0,930 | 0,911 | 0,948 | 0,928 |
+| pós-chuva | pico tarde | 28 | 0,992 | 0,961–1,017 | 0,986–1,003 | 0,994 | 0,990 | 0,999 |
+| fraca | pico tarde | 27 | 0,944 | 0,911–0,977 | 0,937–0,958 | 0,931 | 0,971 | 0,976 |
+| moderada | pico tarde | 12 | 0,900 | 0,871–0,938 | 0,887–0,921 | 0,920 | 0,876 | 0,877 |
+| forte+ | pico tarde | **6** | 0,869 | não estimável | 0,860–0,901 | **0,958** | **0,863** | 0,863 |
+
+**Leitura:**
+- **Robusto:** chuva fraca, moderada e forte reduzem a velocidade, com intervalos que excluem 1, nenhum dia sozinho mudando o resultado (jackknife estreito) e a mesma direção em setembro e outubro. A dose-resposta se mantém.
+- **Frágil:** chuva forte **no pico da tarde** — só 6 dias; setembro e outubro discordam (0,958 vs 0,863); o bootstrap não estima (há reamostras sem nenhum desses dias). Os números "−12% a −18% no pico da tarde" da 1.4 são indicativos, não conclusivos.
+- **Pós-chuva agregado (0–3 h depois):** pequeno e com intervalo que inclui 1; o efeito de recuperação está concentrado nos primeiros ~40 min (1.5) e precisa ser estimado por evento (2.6), não por esse agregado.
+- **Magnitude da chuva fraca varia com o período** (set. −3,8% × out. −2,4%): parte pode ser composição de dias da semana ou a mudança de cadência; o modelo com ajuste por dia da semana e semana (2.4–2.5) deve resolver.
+
 ## 1.9 Comparação com a literatura
 
 Revisão completa em `docs/gold_literatura.md`. Poucos estudos de ônibus com AVL publicam efeito em %; a maior parte é de tráfego geral.
