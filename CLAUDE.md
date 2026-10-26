@@ -300,7 +300,7 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 - Escolha de rota de carros sob chuva em SP (2024): intensidade média e máxima reduzem utilidade das rotas.
 - Geotab (set/2025–fev/2026): velocidade do trânsito −3,2% em dias chuvosos, até −14,8% com chuva intensa (não revisado).
 - Tomás et al. (2022, *Transactions in GIS*): mapa de risco de alagamento com dados de mobilidade; 1.165 bloqueios por alagamento em 2019 (CGE).
-- Chaves Gonçalves (2026, *J. Flood Risk Mgmt*): registros CGE+CET desde 2004 com transitabilidade.
+- ~~Chaves Gonçalves (2026)~~ — **não encontrado** na revisão de 25/10; provável mistura de Pedro H. **Chaves** Maia (FGV, Rio: ônibus GPS + 33 pluviômetros, −1% a −7,3%, local até ~42%) com Erick S. **Gonçalves** (Poli-USP 2018). Revisão completa: `docs/gold_literatura.md`.
 - Rio (2026): 33 pluviômetros de 15 min × 4.868 alagamentos → limiares intensidade-duração (template de desenho).
 
 ### Método (GPS de ônibus em SP)
@@ -367,3 +367,16 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 - Partição por data de SP, timestamps em UTC, SIBH em horário local — padronizar antes de qualquer join.
 - Não confundir o `%` da CET com intensidade; não confundir a rede convencional do DAEE com a telemétrica; códigos `E3-` de outras bacias não retornam dados de SP.
 - `pandas` no droplet de 512 MB compete com o coletor — análise pesada fora dele.
+
+---
+
+## 12. Gold — desenho (25/10/2026)
+
+Documento: **`docs/gold_desenho.md`** (+ `docs/gold_literatura.md`, `docs/gold_fontes_infra.md`; consultas em `analises/gold_exploracao/`). Exploração (dia útil 6–22h, posto DAEE confiável mais próximo):
+- 28.970 trechos físicos; mediana 75% das janelas com dado, **2 passagens por janela**; posto confiável a 1,6 km (mediana), 98% a ≤ 5 km.
+- Correlação da chuva entre postos DAEE a 10 min: 0,89 (≤ 2 km), 0,72 (3–5 km), 0,52 (8–12 km). CEMADEN espalha a chuva até 50 min antes do início (leitura horária) → fora das variáveis de tempo.
+- **Efeito (razão vs. linha de base seca trecho × hora):** fraca 0,94–0,97; moderada 0,90–0,96; forte 0,89–0,92; muito forte 0,82–0,88; pico da tarde o mais sensível. Na faixa da literatura (um pouco acima: ônibus somam embarque).
+- **Recuperação ~100–120 min** após o fim; base 3 h = 6 h. Leads: −1,8% nos 20 min antes do posto registrar (confirma fuso; erro de medida → efeitos são limites inferiores). Transbordamento: −3–4% com ≥ 25% da cidade chovendo, mas só 0,7% das janelas secas. Ônibus somem pouco em chuva muito forte (−4% de trechos com dado).
+- Linha de base varia por **dia da semana** (seg +3–4%, sex −0,3 a −3%) e semana (0,985–1,015) → ajuste multiplicativo.
+- Por trecho: ~78 janelas de chuva ≥ moderada mas só **~12 dias** → bootstrap por dia + Bayes empírico (estágio 2 com covariáveis = KR4).
+- KR4: GeoSampa WFS/arquivos abertos (classificação viária CET, faixas, corredores, Defesa Civil 2013–2026); baixar no PC e subir para `bronze/raw/infra/`.
