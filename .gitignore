@@ -17,3 +17,6 @@ gtfs/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# temporarios da API de dashboards
+dashboards/_*.json

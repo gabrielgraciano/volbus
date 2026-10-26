@@ -1,0 +1,1097 @@
+{
+ "datasets": [
+  {
+   "name": "a9d8acdd",
+   "displayName": "velocidade_hora",
+   "queryLines": [
+    "SELECT hour(janela_sp) AS hora_sp, tipo_dia,\r\n",
+    "       round(sum(dist_m) / sum(tempo_s) * 3.6, 1) AS v_kmh\r\n",
+    "FROM onibus.silver.velocidade_trecho\r\n",
+    "GROUP BY 1, 2"
+   ]
+  },
+  {
+   "name": "2482c88f",
+   "displayName": "dia_velocidade_chuva",
+   "queryLines": [
+    "WITH v AS (SELECT dt, first(tipo_dia) AS tipo_dia,\r\n",
+    "                  round(sum(dist_m) / sum(tempo_s) * 3.6, 2) AS v_kmh\r\n",
+    "           FROM onibus.silver.velocidade_trecho\r\n",
+    "           WHERE hour(janela_sp) BETWEEN 6 AND 21 GROUP BY dt),\r\n",
+    "     c AS (SELECT dt, round(percentile_approx(mm_dia, 0.5), 1) AS chuva_mm\r\n",
+    "           FROM (SELECT c.dt, c.prefixo, sum(c.mm) AS mm_dia\r\n",
+    "                 FROM onibus.silver.chuva_10min c JOIN onibus.silver.postos p USING (prefixo)\r\n",
+    "                 WHERE p.status = 'ok' AND p.duplicata_de IS NULL GROUP BY 1, 2)\r\n",
+    "           GROUP BY dt)\r\n",
+    "SELECT to_date(v.dt) AS dia, v.tipo_dia, v.v_kmh, c.chuva_mm\r\n",
+    "FROM v LEFT JOIN c USING (dt)"
+   ]
+  },
+  {
+   "name": "fada5d7b",
+   "displayName": "mapa_trechos_pico",
+   "queryLines": [
+    "SELECT v.parada_de, s.stop_name, s.stop_lat, s.stop_lon,\r\n",
+    "       round(sum(v.dist_m) / sum(v.tempo_s) * 3.6, 1) AS v_kmh, sum(v.n_pares) AS n_pares\r\n",
+    "FROM onibus.silver.velocidade_trecho v\r\n",
+    "JOIN onibus.silver.gtfs_stops s\r\n",
+    "  ON CAST(s.stop_id AS STRING) = v.parada_de AND s.versao = v.versao_gtfs\r\n",
+    "WHERE v.tipo_dia = 'util' AND hour(v.janela_sp) BETWEEN 17 AND 18\r\n",
+    "GROUP BY 1, 2, 3, 4\r\n",
+    "HAVING sum(v.n_pares) >= 200"
+   ]
+  },
+  {
+   "name": "d22c63b7",
+   "displayName": "postos",
+   "queryLines": [
+    "SELECT prefixo, nome, rede, status, lat, lon, mm_total, completude\r\n",
+    "FROM onibus.silver.postos"
+   ]
+  },
+  {
+   "name": "kpis0001",
+   "displayName": "kpis",
+   "queryLines": [
+    "SELECT\n",
+    "  (SELECT count(DISTINCT dt) FROM onibus.silver.velocidade_trecho) AS dias,\n",
+    "  (SELECT round(count(*) / 1e6, 0) FROM onibus.silver.posicao_limpa) AS posicoes_milhoes,\n",
+    "  (SELECT count(DISTINCT parada_de, parada_ate) FROM onibus.silver.velocidade_trecho) AS trechos_fisicos,\n",
+    "  (SELECT count(*) FROM onibus.silver.postos WHERE status = 'ok' AND duplicata_de IS NULL) AS postos_chuva\n"
+   ]
+  },
+  {
+   "name": "mapafx01",
+   "displayName": "mapa_trechos_pico_faixas",
+   "queryLines": [
+    "SELECT v.parada_de, s.stop_name, s.stop_lat, s.stop_lon,\n",
+    "       round(sum(v.dist_m) / sum(v.tempo_s) * 3.6, 1) AS v_kmh,\n",
+    "       CASE WHEN sum(v.dist_m) / sum(v.tempo_s) * 3.6 < 10 THEN '1. menos de 10 km/h'\n",
+    "            WHEN sum(v.dist_m) / sum(v.tempo_s) * 3.6 < 15 THEN '2. 10 a 15 km/h'\n",
+    "            WHEN sum(v.dist_m) / sum(v.tempo_s) * 3.6 < 20 THEN '3. 15 a 20 km/h'\n",
+    "            ELSE '4. mais de 20 km/h' END AS faixa\n",
+    "FROM onibus.silver.velocidade_trecho v\n",
+    "JOIN onibus.silver.gtfs_stops s\n",
+    "  ON CAST(s.stop_id AS STRING) = v.parada_de AND s.versao = v.versao_gtfs\n",
+    "WHERE v.tipo_dia = 'util' AND hour(v.janela_sp) BETWEEN 17 AND 18\n",
+    "GROUP BY 1, 2, 3, 4\n",
+    "HAVING sum(v.n_pares) >= 200\n"
+   ]
+  }
+ ],
+ "pages": [
+  {
+   "name": "e508b179",
+   "displayName": "Página 1",
+   "layout": [
+    {
+     "widget": {
+      "name": "velocidade-por-hora",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "a9d8acdd",
+         "fields": [
+          {
+           "name": "tipo_dia",
+           "expression": "`tipo_dia`"
+          },
+          {
+           "name": "hora_sp",
+           "expression": "`hora_sp`"
+          },
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Velocidade por Hora",
+         "fields": []
+        }
+       },
+       "version": 3,
+       "mark": {
+        "lineShape": "smooth"
+       },
+       "widgetType": "line",
+       "encodings": {
+        "x": {
+         "fieldName": "hora_sp",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "y": {
+         "fieldName": "v_kmh",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "tipo_dia",
+         "scale": {
+          "type": "categorical"
+         }
+        },
+        "label": {
+         "show": false
+        }
+       },
+       "data": {
+        "queryName": "main_query"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "chuva-velocidade-por-dia",
+      "queries": [
+       {
+        "name": "combo_primary_1",
+        "query": {
+         "datasetName": "2482c88f",
+         "fields": [
+          {
+           "name": "daily(dia)",
+           "expression": "DATE_TRUNC(\"DAY\", `dia`)"
+          },
+          {
+           "name": "chuva_mm",
+           "expression": "`chuva_mm`"
+          }
+         ],
+         "disaggregated": false
+        }
+       },
+       {
+        "name": "combo_primary_2",
+        "query": {
+         "datasetName": "2482c88f",
+         "fields": [
+          {
+           "name": "daily(dia)",
+           "expression": "DATE_TRUNC(\"DAY\", `dia`)"
+          },
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          }
+         ],
+         "disaggregated": false
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Chuva x Velocidade por dia",
+         "fields": []
+        }
+       },
+       "widgetType": "combo",
+       "encodings": {
+        "x": {
+         "fieldName": "daily(dia)",
+         "scale": {
+          "type": "temporal"
+         }
+        },
+        "y": {
+         "scale": {
+          "type": "quantitative"
+         },
+         "layers": [
+          {
+           "visual": "bar",
+           "encodings": {
+            "value": {
+             "fields": [
+              {
+               "fieldName": "chuva_mm"
+              }
+             ]
+            }
+           },
+           "queryName": "combo_primary_1"
+          },
+          {
+           "visual": "line",
+           "encodings": {
+            "value": {
+             "fields": [
+              {
+               "fieldName": "v_kmh"
+              }
+             ]
+            }
+           },
+           "queryName": "combo_primary_2"
+          }
+         ]
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 8,
+      "width": 6,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "velocidade-pico-tarde-dia-util-17h-19h",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "fada5d7b",
+         "fields": [
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          },
+          {
+           "name": "stop_lat",
+           "expression": "`stop_lat`"
+          },
+          {
+           "name": "stop_lon",
+           "expression": "`stop_lon`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Velocidade no pico da tarde (dia útil, 17h-19h)",
+         "fields": []
+        }
+       },
+       "version": 2,
+       "mark": {
+        "opacity": 0.69,
+        "shape": "circle"
+       },
+       "widgetType": "symbol-map",
+       "encodings": {
+        "coordinates": {
+         "latitude": {
+          "fieldName": "stop_lat"
+         },
+         "longitude": {
+          "fieldName": "stop_lon"
+         }
+        },
+        "color": {
+         "fieldName": "v_kmh",
+         "format": {
+          "type": "number-plain",
+          "abbreviation": "compact",
+          "decimalPlaces": {
+           "type": "max",
+           "places": 2
+          }
+         },
+         "scale": {
+          "type": "quantitative",
+          "reverse": true,
+          "colorRamp": {
+           "mode": "single-hue",
+           "baseColor": {
+            "themeColorType": "visualizationColors",
+            "position": 4
+           }
+          }
+         }
+        }
+       },
+       "data": {
+        "queryName": "main_query"
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 0,
+      "width": 6,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "postos-de-chuva",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "d22c63b7",
+         "fields": [
+          {
+           "name": "status",
+           "expression": "`status`"
+          },
+          {
+           "name": "lat",
+           "expression": "`lat`"
+          },
+          {
+           "name": "lon",
+           "expression": "`lon`"
+          },
+          {
+           "name": "mm_total",
+           "expression": "`mm_total`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Postos de Chuva",
+         "fields": []
+        }
+       },
+       "version": 2,
+       "mark": {
+        "size": -2.3
+       },
+       "widgetType": "symbol-map",
+       "encodings": {
+        "coordinates": {
+         "latitude": {
+          "fieldName": "lat"
+         },
+         "longitude": {
+          "fieldName": "lon"
+         }
+        },
+        "color": {
+         "fieldName": "status",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "quebrado",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 4
+            }
+           },
+           {
+            "value": "ok",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 3
+            }
+           }
+          ]
+         }
+        },
+        "size": {
+         "fieldName": "mm_total",
+         "scale": {
+          "type": "quantitative"
+         }
+        }
+       },
+       "data": {
+        "queryName": "main_query"
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 8,
+      "width": 6,
+      "height": 6
+     }
+    }
+   ],
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layoutVersion": "GRID_V1"
+  },
+  {
+   "name": "versaoapi",
+   "displayName": "Versão API",
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layoutVersion": "GRID_V1",
+   "layout": [
+    {
+     "widget": {
+      "name": "api-kpi-dias",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis0001",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "dias",
+           "expression": "`dias`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Dias com velocidade",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "dias",
+         "displayName": "Dias com velocidade"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "api-kpi-posicoes_milhoes",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis0001",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "posicoes_milhoes",
+           "expression": "`posicoes_milhoes`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Posições limpas (milhões)",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "posicoes_milhoes",
+         "displayName": "Posições limpas (milhões)"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "api-kpi-trechos_fisicos",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis0001",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "trechos_fisicos",
+           "expression": "`trechos_fisicos`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Trechos entre paradas",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "trechos_fisicos",
+         "displayName": "Trechos entre paradas"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "api-kpi-postos_chuva",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis0001",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "postos_chuva",
+           "expression": "`postos_chuva`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Postos de chuva usados",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "postos_chuva",
+         "displayName": "Postos de chuva usados"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 9,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "api-velocidade-por-hora",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "a9d8acdd",
+         "fields": [
+          {
+           "name": "tipo_dia",
+           "expression": "`tipo_dia`"
+          },
+          {
+           "name": "hora_sp",
+           "expression": "`hora_sp`"
+          },
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Velocidade média por hora (km/h, todos os trechos)",
+         "fields": []
+        }
+       },
+       "version": 3,
+       "widgetType": "line",
+       "encodings": {
+        "x": {
+         "fieldName": "hora_sp",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "y": {
+         "fieldName": "v_kmh",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "tipo_dia",
+         "scale": {
+          "type": "categorical"
+         }
+        },
+        "label": {
+         "show": false
+        }
+       },
+       "data": {
+        "queryName": "main_query"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 2,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "api-mapa-faixas",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "mapafx01",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "faixa",
+           "expression": "`faixa`"
+          },
+          {
+           "name": "stop_lat",
+           "expression": "`stop_lat`"
+          },
+          {
+           "name": "stop_lon",
+           "expression": "`stop_lon`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "symbol-map",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Velocidade no pico da tarde por trecho (dia útil, 17h–19h)",
+         "fields": []
+        }
+       },
+       "mark": {
+        "opacity": 0.7,
+        "shape": "circle"
+       },
+       "encodings": {
+        "coordinates": {
+         "latitude": {
+          "fieldName": "stop_lat"
+         },
+         "longitude": {
+          "fieldName": "stop_lon"
+         }
+        },
+        "color": {
+         "fieldName": "faixa",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "1. menos de 10 km/h",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 4
+            }
+           },
+           {
+            "value": "2. 10 a 15 km/h",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           },
+           {
+            "value": "3. 15 a 20 km/h",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 1
+            }
+           },
+           {
+            "value": "4. mais de 20 km/h",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 3
+            }
+           }
+          ]
+         }
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 2,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "api-chuva-dia",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "2482c88f",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "dia",
+           "expression": "`dia`"
+          },
+          {
+           "name": "chuva_mm",
+           "expression": "`chuva_mm`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Chuva por dia (mediana dos postos ok, mm)",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "dia",
+         "scale": {
+          "type": "temporal"
+         }
+        },
+        "y": {
+         "fieldName": "chuva_mm",
+         "scale": {
+          "type": "quantitative"
+         }
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 9,
+      "width": 6,
+      "height": 4
+     }
+    },
+    {
+     "widget": {
+      "name": "api-velocidade-dia",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "2482c88f",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "dia",
+           "expression": "`dia`"
+          },
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "line",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Velocidade média por dia (6h–22h, km/h)",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "dia",
+         "scale": {
+          "type": "temporal"
+         }
+        },
+        "y": {
+         "fieldName": "v_kmh",
+         "scale": {
+          "type": "quantitative"
+         }
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 13,
+      "width": 6,
+      "height": 4
+     }
+    },
+    {
+     "widget": {
+      "name": "api-dispersao",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "2482c88f",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "chuva_mm",
+           "expression": "`chuva_mm`"
+          },
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          },
+          {
+           "name": "tipo_dia",
+           "expression": "`tipo_dia`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "scatter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Cada ponto é um dia: chuva × velocidade",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "chuva_mm",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "y": {
+         "fieldName": "v_kmh",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "tipo_dia",
+         "scale": {
+          "type": "categorical"
+         }
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 9,
+      "width": 6,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "api-postos",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "d22c63b7",
+         "fields": [
+          {
+           "name": "status",
+           "expression": "`status`"
+          },
+          {
+           "name": "lat",
+           "expression": "`lat`"
+          },
+          {
+           "name": "lon",
+           "expression": "`lon`"
+          },
+          {
+           "name": "mm_total",
+           "expression": "`mm_total`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Postos de chuva (tamanho = mm desde 25/08)",
+         "fields": []
+        }
+       },
+       "version": 2,
+       "mark": {
+        "size": -2.3
+       },
+       "widgetType": "symbol-map",
+       "encodings": {
+        "coordinates": {
+         "latitude": {
+          "fieldName": "lat"
+         },
+         "longitude": {
+          "fieldName": "lon"
+         }
+        },
+        "color": {
+         "fieldName": "status",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "ok",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 3
+            }
+           },
+           {
+            "value": "quebrado",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 4
+            }
+           },
+           {
+            "value": "lacunar",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 1
+            }
+           },
+           {
+            "value": "sem_dado",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           }
+          ]
+         }
+        },
+        "size": {
+         "fieldName": "mm_total",
+         "scale": {
+          "type": "quantitative"
+         }
+        }
+       },
+       "data": {
+        "queryName": "main_query"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 17,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "api-texto",
+      "multilineTextboxSpec": {
+       "lines": [
+        "### Como ler\n",
+        "- **Velocidade** = comercial (inclui paradas em ponto e semáforo): soma das distâncias ÷ soma dos tempos dos ônibus em cada trecho entre paradas.\n",
+        "- **De madrugada (2h–3h) a velocidade cai**: poucos ônibus e muitos parados fora do terminal (garagem, ponto de regulagem). Investigar antes da gold.\n",
+        "- **Chuva × velocidade por dia é só uma primeira olhada**: mistura dia útil e fim de semana, e a média da cidade dilui efeitos locais. O efeito de verdade vem da gold: cada trecho comparado com o seu normal (mesma hora e tipo de dia), com a chuva do posto mais próximo.\n",
+        "- **Postos**: 95 ok cobrem a cidade; os quebrados são quase todos do CEMADEN (leituras zeradas).\n",
+        "- Período: posições de 25/08 até ontem (o job diário estende às 10h); chuva de 01/08 a 25/10 (download manual).\n"
+       ]
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 17,
+      "width": 6,
+      "height": 7
+     }
+    }
+   ]
+  }
+ ],
+ "uiSettings": {
+  "theme": {
+   "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+  },
+  "applyModeEnabled": false
+ }
+}

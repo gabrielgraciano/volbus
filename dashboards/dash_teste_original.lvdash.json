@@ -1,0 +1,419 @@
+{
+ "datasets": [
+  {
+   "name": "a9d8acdd",
+   "displayName": "velocidade_hora",
+   "queryLines": [
+    "SELECT hour(janela_sp) AS hora_sp, tipo_dia,\r\n",
+    "       round(sum(dist_m) / sum(tempo_s) * 3.6, 1) AS v_kmh\r\n",
+    "FROM onibus.silver.velocidade_trecho\r\n",
+    "GROUP BY 1, 2"
+   ]
+  },
+  {
+   "name": "2482c88f",
+   "displayName": "dia_velocidade_chuva",
+   "queryLines": [
+    "WITH v AS (SELECT dt, first(tipo_dia) AS tipo_dia,\r\n",
+    "                  round(sum(dist_m) / sum(tempo_s) * 3.6, 2) AS v_kmh\r\n",
+    "           FROM onibus.silver.velocidade_trecho\r\n",
+    "           WHERE hour(janela_sp) BETWEEN 6 AND 21 GROUP BY dt),\r\n",
+    "     c AS (SELECT dt, round(percentile_approx(mm_dia, 0.5), 1) AS chuva_mm\r\n",
+    "           FROM (SELECT c.dt, c.prefixo, sum(c.mm) AS mm_dia\r\n",
+    "                 FROM onibus.silver.chuva_10min c JOIN onibus.silver.postos p USING (prefixo)\r\n",
+    "                 WHERE p.status = 'ok' AND p.duplicata_de IS NULL GROUP BY 1, 2)\r\n",
+    "           GROUP BY dt)\r\n",
+    "SELECT to_date(v.dt) AS dia, v.tipo_dia, v.v_kmh, c.chuva_mm\r\n",
+    "FROM v LEFT JOIN c USING (dt)"
+   ]
+  },
+  {
+   "name": "fada5d7b",
+   "displayName": "mapa_trechos_pico",
+   "queryLines": [
+    "SELECT v.parada_de, s.stop_name, s.stop_lat, s.stop_lon,\r\n",
+    "       round(sum(v.dist_m) / sum(v.tempo_s) * 3.6, 1) AS v_kmh, sum(v.n_pares) AS n_pares\r\n",
+    "FROM onibus.silver.velocidade_trecho v\r\n",
+    "JOIN onibus.silver.gtfs_stops s\r\n",
+    "  ON CAST(s.stop_id AS STRING) = v.parada_de AND s.versao = v.versao_gtfs\r\n",
+    "WHERE v.tipo_dia = 'util' AND hour(v.janela_sp) BETWEEN 17 AND 18\r\n",
+    "GROUP BY 1, 2, 3, 4\r\n",
+    "HAVING sum(v.n_pares) >= 200"
+   ]
+  },
+  {
+   "name": "d22c63b7",
+   "displayName": "postos",
+   "queryLines": [
+    "SELECT prefixo, nome, rede, status, lat, lon, mm_total, completude\r\n",
+    "FROM onibus.silver.postos"
+   ]
+  }
+ ],
+ "pages": [
+  {
+   "name": "e508b179",
+   "displayName": "Página 1",
+   "layout": [
+    {
+     "widget": {
+      "name": "velocidade-por-hora",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "a9d8acdd",
+         "fields": [
+          {
+           "name": "tipo_dia",
+           "expression": "`tipo_dia`"
+          },
+          {
+           "name": "hora_sp",
+           "expression": "`hora_sp`"
+          },
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Velocidade por Hora",
+         "fields": []
+        }
+       },
+       "version": 3,
+       "mark": {
+        "lineShape": "smooth"
+       },
+       "widgetType": "line",
+       "encodings": {
+        "x": {
+         "fieldName": "hora_sp",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "y": {
+         "fieldName": "v_kmh",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "tipo_dia",
+         "scale": {
+          "type": "categorical"
+         }
+        },
+        "label": {
+         "show": false
+        }
+       },
+       "data": {
+        "queryName": "main_query"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "chuva-velocidade-por-dia",
+      "queries": [
+       {
+        "name": "combo_primary_1",
+        "query": {
+         "datasetName": "2482c88f",
+         "fields": [
+          {
+           "name": "daily(dia)",
+           "expression": "DATE_TRUNC(\"DAY\", `dia`)"
+          },
+          {
+           "name": "chuva_mm",
+           "expression": "`chuva_mm`"
+          }
+         ],
+         "disaggregated": false
+        }
+       },
+       {
+        "name": "combo_primary_2",
+        "query": {
+         "datasetName": "2482c88f",
+         "fields": [
+          {
+           "name": "daily(dia)",
+           "expression": "DATE_TRUNC(\"DAY\", `dia`)"
+          },
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          }
+         ],
+         "disaggregated": false
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Chuva x Velocidade por dia",
+         "fields": []
+        }
+       },
+       "widgetType": "combo",
+       "encodings": {
+        "x": {
+         "fieldName": "daily(dia)",
+         "scale": {
+          "type": "temporal"
+         }
+        },
+        "y": {
+         "scale": {
+          "type": "quantitative"
+         },
+         "layers": [
+          {
+           "visual": "bar",
+           "encodings": {
+            "value": {
+             "fields": [
+              {
+               "fieldName": "chuva_mm"
+              }
+             ]
+            }
+           },
+           "queryName": "combo_primary_1"
+          },
+          {
+           "visual": "line",
+           "encodings": {
+            "value": {
+             "fields": [
+              {
+               "fieldName": "v_kmh"
+              }
+             ]
+            }
+           },
+           "queryName": "combo_primary_2"
+          }
+         ]
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 8,
+      "width": 6,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "velocidade-pico-tarde-dia-util-17h-19h",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "fada5d7b",
+         "fields": [
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          },
+          {
+           "name": "stop_lat",
+           "expression": "`stop_lat`"
+          },
+          {
+           "name": "stop_lon",
+           "expression": "`stop_lon`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Velocidade no pico da tarde (dia útil, 17h-19h)",
+         "fields": []
+        }
+       },
+       "version": 2,
+       "mark": {
+        "opacity": 0.69,
+        "shape": "circle"
+       },
+       "widgetType": "symbol-map",
+       "encodings": {
+        "coordinates": {
+         "latitude": {
+          "fieldName": "stop_lat"
+         },
+         "longitude": {
+          "fieldName": "stop_lon"
+         }
+        },
+        "color": {
+         "fieldName": "v_kmh",
+         "format": {
+          "type": "number-plain",
+          "abbreviation": "compact",
+          "decimalPlaces": {
+           "type": "max",
+           "places": 2
+          }
+         },
+         "scale": {
+          "type": "quantitative",
+          "reverse": true,
+          "colorRamp": {
+           "mode": "single-hue",
+           "baseColor": {
+            "themeColorType": "visualizationColors",
+            "position": 4
+           }
+          }
+         }
+        }
+       },
+       "data": {
+        "queryName": "main_query"
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 0,
+      "width": 6,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "postos-de-chuva",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "d22c63b7",
+         "fields": [
+          {
+           "name": "status",
+           "expression": "`status`"
+          },
+          {
+           "name": "lat",
+           "expression": "`lat`"
+          },
+          {
+           "name": "lon",
+           "expression": "`lon`"
+          },
+          {
+           "name": "mm_total",
+           "expression": "`mm_total`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Postos de Chuva",
+         "fields": []
+        }
+       },
+       "version": 2,
+       "mark": {
+        "size": -2.3
+       },
+       "widgetType": "symbol-map",
+       "encodings": {
+        "coordinates": {
+         "latitude": {
+          "fieldName": "lat"
+         },
+         "longitude": {
+          "fieldName": "lon"
+         }
+        },
+        "color": {
+         "fieldName": "status",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "quebrado",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 4
+            }
+           },
+           {
+            "value": "ok",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 3
+            }
+           }
+          ]
+         }
+        },
+        "size": {
+         "fieldName": "mm_total",
+         "scale": {
+          "type": "quantitative"
+         }
+        }
+       },
+       "data": {
+        "queryName": "main_query"
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 8,
+      "width": 6,
+      "height": 6
+     }
+    }
+   ],
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layoutVersion": "GRID_V1"
+  }
+ ],
+ "uiSettings": {
+  "theme": {
+   "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+  },
+  "applyModeEnabled": false
+ }
+}
