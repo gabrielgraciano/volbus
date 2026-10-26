@@ -295,7 +295,9 @@ TABELAS = {
             "maior_lacuna_h": "Maior sequência de slots faltantes desde 25/08, em horas.",
             "mm_total": "Chuva total desde 25/08, em mm.",
             "chuva_1209_mm": "Chuva em 12/09 (SP), dia de chuva forte na cidade inteira. 0 com dado = posto quebrado.",
-            "razao_vizinhos": "mm_total / mediana do mm_total dos 5 vizinhos mais próximos com completude >= 90%.",
+            "razao_vizinhos": ("mm_total / mediana do mm_total dos 5 vizinhos mais próximos confiáveis (2ª passada: completude "
+                               ">= 90% e razão da 1ª passada entre 0,4 e 2,0)."),
+            "duplicata_de": "Outro posto no mesmo lugar (< 50 m) com o mesmo total: mesmo pluviômetro cadastrado duas vezes. Usar só um.",
             "dist_media_vizinhos_km": "Distância média aos 5 vizinhos usados na razão, em km.",
             "n_slots_negativos": "Slots marcados f_negativo desde 25/08.",
             "n_picos": "Slots marcados f_pico_implausivel desde 25/08.",

@@ -224,8 +224,13 @@ print(f"ok: {n_postos} postos, slots unicos e alinhados, chuva conservada em tod
 # MAGIC Medidas no periodo com onibus (desde 25/08):
 # MAGIC - `completude` = fracao dos slots de 10 min com valor (nao faltante, nao negativo);
 # MAGIC - `maior_lacuna_h` = maior sequencia de slots faltantes;
-# MAGIC - `razao_vizinhos` = total do posto / mediana do total dos 5 vizinhos mais proximos **com completude ≥ 90%**.
-# MAGIC   Mais justo que a mediana da cidade, porque a chuva variou ~2x entre regioes.
+# MAGIC - `razao_vizinhos` = total do posto / mediana do total dos 5 vizinhos mais proximos **confiaveis**.
+# MAGIC   Mais justo que a mediana da cidade, porque a chuva variou ~2x entre regioes. Duas passadas: na 1a, a
+# MAGIC   referencia e todo posto com completude ≥ 90%; na 2a, so os que nao ficaram fora de [0,4; 2,0] na 1a.
+# MAGIC   (1a versao, uma passada so: 5 postos DAEE com 485–624 mm sairam `suspeito` porque os vizinhos eram
+# MAGIC   postos CEMADEN quebrados — completude alta, mas leituras zeradas.)
+# MAGIC - `duplicata_de` = outro posto no mesmo lugar (< 50 m) com o mesmo total: o mesmo pluviometro cadastrado duas
+# MAGIC   vezes (ex.: `1002855` e `1001855`, Corrego Itupu). A gold deve usar so um.
 # MAGIC - `chuva_1209_mm` = total em 12/09 (SP), dia de chuva forte em toda a cidade: posto que marca 0 esta quebrado.
 # MAGIC
 # MAGIC **Status** (primeiro que se aplica): `quebrado` (razao < 0,4, ou 0 mm em 12/09 tendo dado), `suspeito`
@@ -260,17 +265,32 @@ def dist_km(lat1, lon1, lat2, lon2):
     return 2 * 6371 * np.arcsin(np.sqrt(a))
 
 
-ref = q[q.completude >= COMPLETUDE_MIN]
-razao, viz_km = [], []
-for r in q.itertuples():
-    outros = ref[ref.prefixo != r.prefixo]
-    d = dist_km(r.lat, r.lon, outros.lat.values, outros.lon.values)
-    k = np.argsort(d)[:K_VIZINHOS]
-    med = np.median(outros.mm_total.values[k])
-    razao.append(r.mm_total / med if med > 0 else np.nan)
-    viz_km.append(float(np.mean(d[k])))
-q["razao_vizinhos"] = np.round(razao, 2)
-q["dist_media_vizinhos_km"] = np.round(viz_km, 1)
+def razao_contra(ref):
+    razao, viz_km = [], []
+    for r in q.itertuples():
+        outros = ref[ref.prefixo != r.prefixo]
+        d = dist_km(r.lat, r.lon, outros.lat.values, outros.lon.values)
+        k = np.argsort(d)[:K_VIZINHOS]
+        med = np.median(outros.mm_total.values[k])
+        razao.append(r.mm_total / med if med > 0 else np.nan)
+        viz_km.append(float(np.mean(d[k])))
+    return np.array(razao), np.array(viz_km)
+
+
+# 1a passada: referencia = completude alta; 2a: tira da referencia quem ficou fora da faixa na 1a
+r1, _ = razao_contra(q[q.completude >= COMPLETUDE_MIN])
+confiavel = (q.completude >= COMPLETUDE_MIN) & (r1 >= RAZAO_MIN) & (r1 <= RAZAO_MAX)
+r2, km = razao_contra(q[confiavel])
+q["razao_vizinhos"] = np.round(r2, 2)
+q["dist_media_vizinhos_km"] = np.round(km, 1)
+
+# mesmo pluviometro cadastrado duas vezes: < 50 m e mesmo total
+q["duplicata_de"] = None
+for a in q.itertuples():
+    for b in q.itertuples():
+        if (a.prefixo > b.prefixo and dist_km(a.lat, a.lon, b.lat, b.lon) < 0.05
+                and abs((a.mm_total or 0) - (b.mm_total or 0)) < 0.5):
+            q.loc[q.prefixo == a.prefixo, "duplicata_de"] = b.prefixo
 
 q["status"] = np.select(
     [(q.razao_vizinhos < RAZAO_MIN) | ((q.chuva_1209_mm.fillna(0) == 0) & (q.slots_1209 > 0)),
@@ -279,7 +299,8 @@ q["status"] = np.select(
     ["quebrado", "suspeito", "lacunar"], default="ok")
 
 cols = ["prefixo", "nome", "rede", "operador", "lat", "lon", "resolucao_mediana_min", "completude", "maior_lacuna_h",
-        "mm_total", "chuva_1209_mm", "razao_vizinhos", "dist_media_vizinhos_km", "n_slots_negativos", "n_picos", "status"]
+        "mm_total", "chuva_1209_mm", "razao_vizinhos", "dist_media_vizinhos_km", "n_slots_negativos", "n_picos",
+        "duplicata_de", "status"]
 q = q[cols]
 q["completude"] = q.completude.round(3)
 q["mm_total"] = q.mm_total.round(1)
