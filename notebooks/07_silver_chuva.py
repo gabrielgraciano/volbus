@@ -204,7 +204,7 @@ conserv = (spark.table(BRONZE).filter("mm >= 0").groupBy("prefixo").agg(F.sum("m
            .withColumn("dif", F.abs(F.col("bronze") - F.col("grade"))))
 com_neg = {r.prefixo for r in ch.filter("f_negativo").select("prefixo").distinct().collect()}
 ruins = [r for r in conserv.collect()
-         if (r.prefixo in com_neg and not (0 <= r.bronze - r.grade <= 5.0))
+         if (r.prefixo in com_neg and not (-0.01 <= r.bronze - r.grade <= 5.0))   # -0,01: arredondamento
          or (r.prefixo not in com_neg and r.dif > 0.01)]
 for r in conserv.filter("dif > 0.01").collect():
     print(f"  {r.prefixo}: bronze {r.bronze:.1f} mm, grade {r.grade:.1f} mm (slot negativo + positivo)")
