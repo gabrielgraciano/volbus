@@ -173,21 +173,21 @@ Revisão completa em `docs/gold_literatura.md`. Poucos estudos de ônibus com AV
 
 ## 1.11 Efeito e recuperação com a base final (02/11)
 
-Agora com a chuva dos 3 postos, a linha de base ajustada por dia da semana e semana e o intervalo de 2.000 reamostras de dias (`notebooks/10_gold_efeito_cidade.py`). Dia útil, 6h–23h, 25/08 a 25/10. **Prévia:** números do teste no warehouse, antes da rodada oficial do 09 corrigido e do 10. A correção mexe em 0,009% das linhas.
+Agora com a chuva dos 3 postos, a linha de base ajustada por dia da semana e semana e o intervalo de 2.000 reamostras de dias (`notebooks/10_gold_efeito_cidade.py`). Dia útil, 6h–23h, 25/08 a 25/10: **42 dias úteis**, 84,7 M janelas no KR1 e 11,1 M no KR2. Rodada oficial de 02/11, em `gold.efeito_cidade`, `gold.recuperacao_cidade` e `gold.tempo_recuperacao`.
 
 **KR1: razão por classe de chuva e período [IC 95%].** Entre parênteses, células com menos de 8 dias: indicativas, sem intervalo.
 
 | Classe | Dia todo | Manhã (6–9h) | Meio (10–15h) | Tarde (16–19h) | Noite (20–23h) |
 |---|---|---|---|---|---|
-| pós-chuva | 0,993 [0,985–1,000] | 0,981 [0,973–0,990] | 1,007 [0,999–1,014] | 0,986 [0,960–1,005] | 0,991 [0,976–1,003] |
-| traço | 0,974 [0,965–0,981] | 0,974 [0,966–0,983] | 0,991 [0,985–0,997] | 0,957 [0,935–0,980] | 0,969 [0,955–0,984] |
-| fraca | 0,953 [0,938–0,966] | 0,959 [0,945–0,978] | 0,982 [0,972–0,990] | 0,925 [0,897–0,955] | 0,952 [0,933–0,972] |
-| moderada | 0,937 [0,919–0,950] | 0,942 [0,928–0,965] | 0,963 [0,954–0,983] | 0,897 [0,883–0,921] | 0,929 [0,852–0,955] |
-| forte | 0,907 [0,891–0,928] | 0,914 (7 dias) | 0,920 [0,908–0,984] | 0,878 (6 dias) | 0,914 (6 dias) |
-| muito forte | 0,854 [0,813–0,915] | — | 0,882 (6 dias) | 0,817 (3 dias) | 0,887 (2 dias) |
+| pós-chuva | 0,993 [0,985–0,999] | 0,981 [0,973–0,990] | 1,007 [1,000–1,013] | 0,986 [0,961–1,005] | 0,991 [0,973–1,003] |
+| traço | 0,974 [0,965–0,981] | 0,974 [0,966–0,983] | 0,991 [0,985–0,997] | 0,957 [0,933–0,980] | 0,969 [0,955–0,983] |
+| fraca | 0,953 [0,937–0,966] | 0,959 [0,945–0,977] | 0,982 [0,972–0,991] | 0,925 [0,897–0,954] | 0,952 [0,933–0,971] |
+| moderada | 0,937 [0,917–0,950] | 0,942 [0,929–0,963] | 0,963 [0,954–0,983] | 0,897 [0,883–0,921] | 0,929 [0,855–0,954] |
+| forte | 0,907 [0,889–0,930] | 0,914 (7 dias) | 0,920 [0,908–0,985] | 0,878 (6 dias) | 0,914 (6 dias) |
+| muito forte | 0,854 [0,813–0,916] | — | 0,882 (6 dias) | 0,817 (3 dias) | 0,887 (2 dias) |
 
-- **Dose-resposta com intervalo:** forte perde mais que moderada (0,968 [0,959–0,983]) e muito forte mais que forte (0,942 [0,889–0,988]). Moderada × fraca fica no limite (0,983 [0,964–1,001]).
-- **O pico da tarde é mesmo o mais sensível:** tarde × meio do dia dá 0,942 [0,912–0,971] na chuva fraca e 0,931 [0,903–0,959] na moderada. Na forte, 0,954 [0,888–1,010]: inconclusivo.
+- **Dose-resposta com intervalo:** forte perde mais que moderada (0,968 [0,959–0,985]) e muito forte mais que forte (0,942 [0,888–0,988]). Moderada × fraca fica no limite (0,983 [0,964–1,001]).
+- **O pico da tarde é mesmo o mais sensível:** tarde × meio do dia dá 0,942 [0,910–0,971] na chuva fraca e 0,931 [0,902–0,961] na moderada. Na forte, 0,954 [0,886–1,017]: inconclusivo.
 - **Traço também pesa** (−2,6%): menos de uma batida do pluviômetro em 30 min, mas em geral sinal de chuva por perto.
 - **Coleta a 2 min × a 1 min:** mesma direção. Dia todo: fraca 0,942 × 0,965; moderada 0,942 × 0,930.
 
@@ -195,7 +195,7 @@ Agora com a chuva dos 3 postos, a linha de base ajustada por dia da semana e sem
 
 | A chuva acabou | Fraca | Moderada | Forte |
 |---|---|---|---|
-| de manhã | 70 [50–aberto] | 130 [70–aberto] | 50 [20–50] |
+| de manhã | 70 [10–aberto] | 130 [70–aberto] | 50 [20–50] |
 | no meio do dia | 0 [0–0] | 40 [0–50] | 0 [0–50] |
 | à tarde | 120 [40–aberto] | 100 [40–aberto] | não recuperou até 170 (6 dias) |
 | à noite | 40 [20–70] | 30 [10–90] | 30 (7 dias) |
@@ -203,8 +203,8 @@ Agora com a chuva dos 3 postos, a linha de base ajustada por dia da semana e sem
 
 - **O tempo de recuperação depende mais da hora em que a chuva acaba do que da intensidade.** Fora dos picos a velocidade volta em até ~40 min; nos picos leva 1–2 h, e chuva forte no fim da tarde pode não se recuperar antes de o pico acabar (6 dias: frágil). Os "~100–120 min" da 1.5 são uma média dessas situações.
 - **Forte no dia todo parece voltar mais rápido que moderada:** não comparar assim, porque cada classe mistura horários de fim diferentes. Comparar dentro do período.
-- **Quando a chuva acaba no meio do dia, a velocidade passa do normal** (perda de −1,0 min [−1,8 a −0,1] nas 2 h após chuva fraca; razão ~1,01). Hipótese, não testada: menos demanda em dia de chuva.
-- **Perda acumulada nas 2 h depois do fim** (minutos de operação normal perdidos por ônibus): moderada 4,2 [1,7–7,1] de manhã e 3,6 [−1,0–10,3] à tarde; fraca 2,8 [0,6–6,8] à tarde.
+- **Quando a chuva acaba no meio do dia, a velocidade passa do normal** (perda de −1,0 min [−1,7 a −0,2] nas 2 h após chuva fraca; razão ~1,01). Hipótese, não testada: menos demanda em dia de chuva.
+- **Perda acumulada nas 2 h depois do fim** (minutos de operação normal perdidos por ônibus): moderada 4,2 [1,6–6,8] de manhã e 3,6 [−0,9–10,5] à tarde; fraca 2,8 [0,7–7,0] à tarde.
 - **O tempo é um estimador instável:** é a primeira vez que uma curva ruidosa cruza um limite, então o valor pode ficar na ponta do intervalo (fraca à tarde: 120 [40–aberto]). A perda acumulada varia menos e deve acompanhar o tempo no KR2 por trecho.
 
 **Antecipação:** 0,991 a 10 min da chuva, 0,995 a 20 min, ~0,998 entre 30 e 50 min e 1,00 de 60 min para trás. Confirma o fuso e justifica tirar da curva de recuperação as janelas a ≤ 40 min da chuva seguinte (14% das janelas).
@@ -282,12 +282,35 @@ Fontes levantadas e testadas a partir deste PC (detalhes, URLs e comandos em `do
 | **Tipo de via** (vias rápidas/arteriais perdem mais em %) | Classificação Viária CET (GeoSampa; 210.754 trechos de logradouro; revisão 02/2026) | fração do trecho por classe (VTR, arterial, coletora, local) e classe dominante |
 | **Faixa exclusiva** (atenua) | `faixa_onibus` (7.378 feições, ~779 km; data de implantação; horário) | fração do trecho com faixa; só pico ou integral |
 | **Corredor** (atenua) | `corredor_onibus` (45 linhas, ~265 km; 40 em operação) | fração do trecho em corredor |
-| **Histórico de alagamento** (perdas de 20–40%, recuperação lenta) | Ocorrências da Defesa Civil 2013–2026 (pontos com data; ALAGAMENTO/INUNDAÇÃO) | ocorrências por km por ano num raio de 50–100 m |
+| **Histórico de alagamento** (perdas de 20–40%, recuperação lenta) | Ocorrências da Defesa Civil 2013–2026 (pontos com data; ALAGAMENTO/INUNDAÇÃO) | dias distintos com ocorrência a 100 m (sensibilidade: 50 m), só antes de 25/08/2026 |
 | Alagamento por evento (opcional) | CGE, histórico diário desde ~2008 com hora e transitável/intransitável (HTML, exige scraping e geocodificação) | casar com os eventos de chuva hora a hora |
 | Suscetibilidade (complemento) | manchas de inundação TR 5/25/100 (modeladas), córregos canalizados, declividade | fração do trecho em mancha; proximidade de córrego canalizado |
 | Contexto (opcional) | Censo 2022, entorno por setor (bueiro, pavimentação) | média ponderada no entorno |
 
-**Como juntar:** geometria de cada trecho físico = pedaço do traçado GTFS entre as duas paradas, reprojetado para EPSG:31983; para camadas lineares, recorte por buffer (12–15 m vias, 15–20 m faixas, 20–25 m corredores) com filtro de rumo (< 30°) para não pegar ruas transversais; pontos contados num raio; polígonos por fração do comprimento.
+**Como juntar (notebook 11, `gold.trecho_infra`):** cada trecho vira pontos a cada ~20 m ao longo do traçado com mais tempo de ônibus. Cada ponto procura a linha mais próxima da camada dentro de um raio, com rumo parecido (até 30°, sem olhar o sentido), para não pegar a rua transversal. Fração do trecho = fração dos pontos. Raios medidos em 02/11:
+
+| Camada | Distância mediana | Raio | Pontos casados |
+|---|---|---|---|
+| Classificação viária CET | 0,6 m | 15 m | 98,6% (com 60 m, só 99,3%) |
+| Faixas exclusivas | 0,8 m | 15 m | 18,3% |
+| Corredores em operação | 7 m | 25 m | 8,6% |
+
+**Resultado da junção (02/11, teste no PC; sem trechos atípicos):**
+
+| Classe dominante | Trechos | km | Velocidade média (km/h) |
+|---|---|---|---|
+| VTR | 23 | 23 | 29,5 |
+| Rodovia | 123 | 100 | 27,2 |
+| Arterial | 9.974 | 4.504 | 16,2 |
+| Coletora | 16.718 | 5.079 | 14,5 |
+| Local | 1.896 | 661 | 13,0 |
+
+- **Validação independente:** as classes vêm da CET e a velocidade vem dos ônibus, e ela segue a hierarquia viária. Corredor: 17,5 km/h; faixa sem corredor: 15,9; nenhum dos dois: 15,1. O notebook falha se a ordem das classes quebrar.
+- **VTR e rodovia têm poucos trechos** (146 juntas): o KR4 compara, na prática, expressa × arterial × coletora × local.
+- **Sentido da faixa:** faixas ficam no eixo da via e o desenho não indica o sentido (53% × 47%). Em via de mão única não há dúvida; em mão dupla, o trecho pode estar do outro lado da rua. Isso vale para 20% do comprimento com faixa e fica em `frac_faixa_via_dupla`, para testar a sensibilidade.
+- **Horário da faixa:** muitas só valem no pico (mediana de 6 h por dia útil). `frac_faixa_longa` conta as de ≥ 10 h.
+- **Alagamento:** 12.494 ocorrências em 1.454 dias antes do período estudado. Conta dias distintos, não registros: uma coordenada aparece 482 vezes, e 3 dias de 2016 somam 3.115 das 12.625 ocorrências da série inteira. 38,8% dos trechos têm ao menos um dia a 100 m (mediana 0, p90 = 4, p99 = 20, máximo 73). Os líderes são Prestes Maia/Anhangabaú e o eixo Ribeirão Jacu/Musgo de Flor, pontos conhecidos.
+- **Variável muito assimétrica:** usar `log(1 + dias)` ou faixas de dias no modelo, com o comprimento como controle.
 
 **Análise:** os atributos entram como covariáveis no estágio 2 do KR3 (efeito do trecho ~ Xγ); γ responde ao KR4. Sensibilidade: classe dominante vs. frações; e a interação com a recuperação (KR2) por análise de sobrevivência.
 

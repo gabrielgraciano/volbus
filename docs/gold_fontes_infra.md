@@ -2,7 +2,7 @@
 title: "Gold — fontes de infraestrutura (KR4)"
 subtitle: "Onde baixar tipo de via, faixas, corredores e alagamentos de São Paulo"
 author: "Projeto Ônibus SP × Chuva"
-date: "25/10/2026"
+date: "25/10/2026, atualizado em 02/11/2026"
 lang: pt-BR
 ---
 
@@ -14,12 +14,30 @@ lang: pt-BR
 - **O Databricks não alcança esses servidores** (rede restrita a PyPI e googleapis): baixar no PC e subir para `/Volumes/onibus/bronze/raw/infra/`.
 - Atribuição exigida: "Fonte: GeoSampa/PMSP".
 
+# Versão baixada (02/11/2026)
+
+Em `/Volumes/onibus/bronze/raw/infra/versao=2026-11-02/`, com `manifesto.csv` (arquivo, feições, bytes, sha256, data e URL). O notebook 11 confere os hashes antes de ler.
+
+| Arquivo | Conteúdo | Feições | Tamanho |
+|---|---|---|---|
+| `SIRGAS_GPKG_classeviariacet.zip` | 1 GPKG | 210.754 (LOCAL 133.098; COLETORA 50.641; ARTERIAL 21.707; VIA DE PEDESTRES 4.232; RODOVIA 648; VTR 428) | 59,2 MB |
+| `faixa_onibus.gpkg` | faixas | 7.378 (EXCLUSIVA 7.003; PREFERENCIAL 231; REVERSÍVEL 103; TEMPORÁRIA 41) | 3,0 MB |
+| `corredor_onibus.gpkg` | corredores | 45 (40 em operação, 2 em implantação, 3 futuros; 33 SPTrans e 12 EMTU) | 0,2 MB |
+| `SIRGAS_GPKG_riscoocorrencia.zip` | **14 GPKG, um por ano**, 2013 a 09/2026 | 68.946 (ALAGAMENTO + INUNDAÇÃO: 12.625) | 11,3 MB |
+
+**Armadilhas dos arquivos:**
+- `qt_metro_faixa` está vazia nas 7.378 faixas: o comprimento sai da geometria (779 km). `dt_implantacao_faixa` tem 289 nulos.
+- Faixas no eixo da via, sem indicar o sentido pela geometria (ver `gold_desenho`, seção 2.8).
+- Os GPKG de ocorrências mudam de um ano para outro: 2026 tem `primaryindex`, `subpreit` e ponto com M. `data`, `ocorrencia` e a geometria existem em todos.
+- Ocorrências em bloco: 2016 tem 4.210 alagamentos, com 3.115 em 3 dias (09/01, 24/02 e 25/02) e 3.361 registros de toda natureza em São Miguel Paulista. Contar dias distintos, não registros.
+- O ambiente Python do PC não tem biblioteca geográfica: o teste roda num venv, com `analises/gold_exploracao/testa_11.py`.
+
 # Tabela priorizada
 
 | Prior. | Item | Acesso | Formato / CRS | Período | Tamanho | Junção ao trecho |
 |---|---|---|---|---|---|---|
 | 1 | **Classificação Viária CET** (VTR, arterial, coletora, local, rodovia) | WFS `geoportal:classificacao_viaria_cet`; arquivo `SIRGAS_GPKG_classeviariacet.zip` | GPKG/SHP/WFS, EPSG:31983 | Portaria DSV.G 018/19; revisão 19/02/2026; 1:10.000 | 210.754 trechos; GPKG zip 59 MB | buffer 12–15 m + filtro de rumo < 30° → fração por classe e classe dominante |
-| 1 | **Faixas exclusivas** | WFS `geoportal:faixa_onibus` (uma requisição) | EPSG:31983 | metadados 08/2021; implantação 1970–01/2024 | 7.378 feições, ~779 km; 6 MB | buffer 15–20 m; usar `dt_implantacao` e `tx_horario_funcionamento` |
+| 1 | **Faixas exclusivas** | WFS `geoportal:faixa_onibus` (uma requisição) | EPSG:31983 | metadados 08/2021; implantação 1970–01/2024 | 7.378 feições, ~779 km; 3 MB | buffer 15–20 m; usar `dt_implantacao` e `tx_horario_funcionamento` |
 | 1 | **Corredores de ônibus** | WFS `geoportal:corredor_onibus` | EPSG:31983 | atualização 02/10/2025 | 45 linhas, ~265 km | buffer 20–25 m; filtrar "Em Operação" |
 | 1 | **Ocorrências Defesa Civil 2013–2026** (alagamento, inundação, ...) | arquivo `SIRGAS_GPKG_riscoocorrencia.zip`; KMZ por ano | GPKG EPSG:31983; KMZ WGS84 | diário (só data) | GPKG zip 11 MB | contagem de ALAGAMENTO/INUNDAÇÃO num raio de 50–100 m, por km e por ano |
 | 2 | **CGE pontos de alagamento** (transitável/intransitável) | `https://www.cgesp.org/v3/alagamentos.jsp?dataBusca=DD/MM/AAAA&enviaBusca=Buscar` | HTML, só endereço | ~2008 → hoje, com hora início/fim | ~12 KB/dia (~6.500 páginas) | scraping (~1 req/s; robots.txt permite /v3/) + geocodificação pela camada CET |

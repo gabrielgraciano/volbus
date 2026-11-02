@@ -28,11 +28,12 @@ OBJETOS = {
         "posicao_limpa → posicao_rota → deslocamento → velocidade_trecho.",
     "SCHEMA onibus.gold":
         "Tabelas prontas para os resultados: trechos físicos e seus postos de chuva, chuva por posto com variáveis "
-        "derivadas e eventos de chuva; depois, velocidade relativa à linha de base e efeito da chuva. Desenho em docs/gold_desenho.md.",
+        "derivadas e eventos de chuva, infraestrutura por trecho, velocidade relativa à linha de base e efeito da chuva. Desenho em docs/gold_desenho.md.",
     "VOLUME onibus.bronze.raw":
         "Arquivos crus. olhovivo/: posições da API Olho Vivo (bronze_posicao/ = v1, 25/08–21/09; "
         "bronze_raw/ = v2, desde 21/09) e auditoria.csv da coleta, copiados do Google Drive pelo notebook "
-        "00_ingestao_drive. gtfs/versao=AAAA-MM-DD/: GTFS da SPTrans por data de download.",
+        "00_ingestao_drive. gtfs/versao=AAAA-MM-DD/: GTFS da SPTrans por data de download. "
+        "infra/versao=AAAA-MM-DD/: camadas do GeoSampa baixadas no PC, com manifesto.csv.",
 }
 
 # --- colunas reaproveitadas entre tabelas ------------------------------------------------------
@@ -304,6 +305,34 @@ TABELAS = {
             "n_picos": "Slots marcados f_pico_implausivel desde 25/08.",
             "status": ("Primeiro que se aplica: sem_dado (nenhuma leitura desde 25/08), quebrado (razao < 0,4 ou 0 mm em 12/09 com dado), suspeito (razao > 2,0), "
                        "lacunar (completude < 90%), ok."),
+        },
+    },
+    "onibus.gold.trecho_infra": {
+        "comentario":
+            "Infraestrutura de cada trecho físico: fração por classe de via, faixa e corredor de ônibus e histórico de alagamento, "
+            "a partir do GeoSampa (Fonte: GeoSampa/PMSP, CC BY-SA 4.0). Frações = fração de pontos a cada ~20 m ao longo do traçado. "
+            "Notebook 11_gold_trecho_infra.",
+        "colunas": {
+            "trecho_id": "Trecho físico (gold.trecho).",
+            "frac_vtr": "Fração do trecho em via de trânsito rápido (classificação viária CET).",
+            "frac_rodovia": "Fração do trecho em rodovia.",
+            "frac_arterial": "Fração do trecho em via arterial.",
+            "frac_coletora": "Fração do trecho em via coletora.",
+            "frac_local": "Fração do trecho em via local.",
+            "frac_sem_classe": "Fração do trecho sem via classificada a até 15 m com rumo parecido.",
+            "classe_dominante": "Classe com a maior fração: VTR, RODOVIA, ARTERIAL, COLETORA, LOCAL ou SEM_CLASSE.",
+            "frac_faixa": "Fração do trecho em via com faixa EXCLUSIVA de ônibus, em qualquer horário.",
+            "frac_faixa_longa": "Fração do trecho em faixa exclusiva que vale pelo menos 10 h por dia útil.",
+            "frac_faixa_via_dupla": ("Parte de frac_faixa em via de mão dupla. A geometria não indica o sentido da faixa: "
+                                     "ela pode estar do outro lado da rua."),
+            "frac_corredor": "Fração do trecho a até 25 m de corredor de ônibus em operação.",
+            "n_pontos": "Pontos usados no trecho.",
+            "dias_alag_50m": "Dias distintos com ALAGAMENTO ou INUNDACAO a até 50 m do trecho, de 01/01/2013 a 24/08/2026.",
+            "dias_alag_100m": "Dias distintos com ALAGAMENTO ou INUNDACAO a até 100 m do trecho, de 01/01/2013 a 24/08/2026.",
+            "alag_dias_km2_ano": "dias_alag_100m por km² da área a até 100 m do trecho, por ano: compara trechos de comprimentos diferentes.",
+            "versao_infra": "Versão dos arquivos em bronze/raw/infra.",
+            "versao_gtfs": "Versão do GTFS do traçado usado.",
+            "shape_id": "Traçado com mais tempo de ônibus no trecho, usado como geometria.",
         },
     },
     "onibus.gold.efeito_cidade": {
