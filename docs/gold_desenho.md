@@ -282,7 +282,7 @@ Parte disso é tipo de via: arteriais alagam mais. Dentro de cada classe (5+ dia
 
 ## 1.13 Recuperação por trecho e por grupo (02/11)
 
-Notebook `13_gold_recuperacao_trecho`: eventos com pico ≥ 2,5 mm/h, dia útil, 6h–23h, postos DAEE, sem trechos atípicos, sem janelas a ≤ 40 min da chuva seguinte. **Números do teste com os dados finais; a rodada oficial usa as mesmas sementes.**
+Notebook `13_gold_recuperacao_trecho`: eventos com pico ≥ 2,5 mm/h, dia útil, 6h–23h, postos DAEE, sem trechos atípicos, sem janelas a ≤ 40 min da chuva seguinte. **Rodada oficial de 02/11**, em `gold.recuperacao_trecho`, `gold.recuperacao_grupo`, `gold.tempo_recuperacao_grupo` e `gold.validacao_recuperacao`; idêntica ao teste, que usou as mesmas sementes.
 
 **O que não dá para medir: um tempo exato por trecho.** Uma janela isolada varia ±23% (mediana de 3 pares de posições). Com esse ruído, um trecho com déficit constante de 5%, que **nunca** recupera, seria marcado como recuperado na 1ª hora em 30% dos eventos; com déficit de 10%, em 17%. Por isso a análise de sobrevivência por trecho × evento (Kaplan–Meier e Cox, seção 2.6) foi **descartada**: mediria ruído.
 
