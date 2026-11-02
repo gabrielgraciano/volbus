@@ -307,6 +307,93 @@ TABELAS = {
                        "lacunar (completude < 90%), ok."),
         },
     },
+    "onibus.gold.efeito_trecho": {
+        "comentario":
+            "KR1 e KR3. Efeito da chuva moderada ou mais forte em cada trecho, em dia útil, 6h-23h, para quem tem pelo menos 8 dias e "
+            "30 janelas de chuva, com posto DAEE. Inclui o ranking, a estabilidade por reamostragem de dias e o placebo. "
+            "A ordem exata do topo não é estável: use o grupo crítico. Notebook 12_gold_efeito_trecho.",
+        "colunas": {
+            "trecho_id": "Trecho físico (gold.trecho).",
+            "nome_de": "Parada de início.",
+            "nome_ate": "Parada de fim.",
+            "n_dias": "Dias com chuva moderada+ no trecho.",
+            "janelas": "Janelas de 10 min com chuva moderada+.",
+            "horas_chuva": "Horas de ônibus nessas janelas.",
+            "razao_bruta": "Soma das distâncias / distâncias esperadas na chuva, relativa ao seco do trecho, sem padronizar.",
+            "razao_padronizada": "A mesma razão, se o trecho tivesse pegado a mistura de período e intensidade da cidade.",
+            "se_log": "Erro da razão padronizada em log, agrupado por dia e moderado.",
+            "razao_encolhida": "Razão padronizada depois do encolhimento. É a que ordena o ranking.",
+            "ic_inf": "Limite inferior do intervalo de 95% de razao_encolhida (aproximação normal em log).",
+            "ic_sup": "Limite superior do intervalo de 95% de razao_encolhida (aproximação normal em log).",
+            "p_queda": "Probabilidade posterior de a razão verdadeira ser menor que 1.",
+            "rank": "Posição pelo efeito encolhido: 1 = perde mais.",
+            "rank_ic_inf": "Percentil 2,5 da posição nas reamostras de dias.",
+            "rank_ic_sup": "Percentil 97,5 da posição nas reamostras de dias.",
+            "freq_top10": "Fração das reamostras em que o trecho ficou no top-10.",
+            "freq_top20": "Fração das reamostras em que o trecho ficou no top-20.",
+            "freq_pior1": "Fração das reamostras em que o trecho ficou entre os 1% piores.",
+            "freq_pior5": "Fração das reamostras em que o trecho ficou entre os 5% piores.",
+            "placebo_seco": ("Log da razão nas janelas secas dos dias com chuva moderada+ menos a dos outros dias. "
+                             "Muito negativo = o trecho também fica lento no seco, e a causa pode não ser a chuva."),
+            "perto_terminal": "O nome de uma das paradas cita terminal, garagem, metrô ou estação. Parte da queda pode ser espera.",
+            "classe_dominante": "Classe de via com maior fração do trecho.",
+            "dias_alag_100m": "Dias distintos com alagamento a até 100 m, de 2013 a 24/08/2026.",
+            "v_kmh_media": "Velocidade média do trecho, em km/h.",
+            "comprimento_m": "Comprimento do trecho, em metros.",
+            "lat": "Latitude do ponto médio.",
+            "lon": "Longitude do ponto médio.",
+            "grupo_critico": "true se freq_pior5 >= 0,8: entre os 5% piores em pelo menos 80% das reamostras.",
+            "local_critico": "Código do lugar: trechos críticos a até 300 m têm o mesmo código. -1 = fora do grupo crítico.",
+        },
+    },
+    "onibus.gold.estabilidade_ranking": {
+        "comentario":
+            "KR3. Métricas de estabilidade do ranking por trecho, por reamostragem de dias e por divisão dos dias em metades. "
+            "Só jaccard_mediano e top10_no_top20_em_80pct têm limiar, fixado antes de ver o resultado. Notebook 12_gold_efeito_trecho.",
+        "colunas": {
+            "metrica": "Nome da métrica.",
+            "valor": "Valor observado.",
+            "limiar": "Limiar do critério de estabilidade. Nulo = métrica informativa.",
+            "passou": "sim ou nao, nas métricas com limiar.",
+        },
+    },
+    "onibus.gold.efeito_infra": {
+        "comentario":
+            "KR4. Associação entre infraestrutura e o efeito da chuva no trecho, comparando trechos parecidos. "
+            "Coeficientes em relação à via coletora, sem faixa, sem corredor. Associação, não causa. Notebook 12_gold_efeito_trecho.",
+        "colunas": {
+            "modelo": ("principal = trecho típico (peso pela precisão); ponderado_por_onibus = peso pelas horas de ônibus; os demais "
+                       "são sensibilidades do principal."),
+            "termo": "Atributo do trecho.",
+            "coef_log": "Coeficiente, em log da razão. Negativo = perde mais.",
+            "ic_inf": "Limite inferior do intervalo de 95%, por reamostragem de dias.",
+            "ic_sup": "Limite superior do intervalo de 95%, por reamostragem de dias.",
+            "ic_inf_espacial": "Limite inferior do intervalo de 95%, por blocos espaciais de ~2 km. Nulo nas sensibilidades.",
+            "ic_sup_espacial": "Limite superior do intervalo de 95%, por blocos espaciais de ~2 km. Nulo nas sensibilidades.",
+            "n_trechos": "Trechos no modelo.",
+            "pct": "Coeficiente em %: 100 × (exp(coef_log) − 1).",
+        },
+    },
+    "onibus.gold.efeito_grupo": {
+        "comentario":
+            "KR4 sem modelo. Queda de cada grupo de trechos por intensidade de chuva, somando distâncias: mostra o que o ônibus sente. "
+            "Intervalos por reamostragem de dias. Notebook 12_gold_efeito_trecho.",
+        "colunas": {
+            "dimensao": "via, alagamento, onibus, alagamento_em_arterial ou alagamento_em_coletora.",
+            "grupo": "Grupo de trechos.",
+            "chuva": "fraca, moderada ou forte+ (forte e muito forte).",
+            "razao": "Soma das distâncias / distâncias esperadas na chuva, relativa ao seco do grupo.",
+            "ic_inf": "Limite inferior do intervalo de 95%. Nulo se frágil.",
+            "ic_sup": "Limite superior do intervalo de 95%. Nulo se frágil.",
+            "vs_referencia": "Razão do grupo / razão do grupo de referência, na mesma chuva. Abaixo de 1 = perde mais.",
+            "ref_ic_inf": "Limite inferior do intervalo de 95% de vs_referencia. Nulo se frágil.",
+            "ref_ic_sup": "Limite superior do intervalo de 95% de vs_referencia. Nulo se frágil.",
+            "n_trechos": "Trechos no grupo.",
+            "n_dias": "Dias com essa chuva no grupo.",
+            "janelas": "Janelas trecho × 10 min.",
+            "fragil": "true se tem menos de 8 dias: indicativo, sem intervalo.",
+        },
+    },
     "onibus.gold.trecho_infra": {
         "comentario":
             "Infraestrutura de cada trecho físico: fração por classe de via, faixa e corredor de ônibus e histórico de alagamento, "

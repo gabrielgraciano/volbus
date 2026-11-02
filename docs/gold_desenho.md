@@ -209,6 +209,77 @@ Agora com a chuva dos 3 postos, a linha de base ajustada por dia da semana e sem
 
 **Antecipação:** 0,991 a 10 min da chuva, 0,995 a 20 min, ~0,998 entre 30 e 50 min e 1,00 de 60 min para trás. Confirma o fuso e justifica tirar da curva de recuperação as janelas a ≤ 40 min da chuva seguinte (14% das janelas).
 
+## 1.12 Efeito por trecho, ranking e infraestrutura (02/11)
+
+Notebook `12_gold_efeito_trecho`: chuva moderada ou mais forte, dia útil, 6h–23h, postos DAEE, sem trechos atípicos. **Números do teste com os dados finais; a rodada oficial usa a mesma semente.**
+
+**KR1 por trecho.** 24.576 trechos passam na regra [N] (≥ 8 dias e ≥ 30 janelas), de 26.235 com alguma chuva moderada+ (93,7%). Em **8.700 (35,4%)** a probabilidade de queda real é ≥ 95%. Razão encolhida: 0,924 / 0,968 / 1,012 nos quantis de 5, 50 e 95%. O trecho típico (0,968) perde menos que a cidade (0,931) porque a cidade soma tempo: trechos cheios e ônibus presos pesam mais.
+
+**KR3: o critério reprova.** Definido antes de ver o resultado, reavaliado sem alteração:
+
+| Medida | Critério | Observado |
+|---|---|---|
+| Jaccard mediano do top-10 | ≥ 0,5 | **0,33** |
+| Dos 10 primeiros, quantos ficam no top-20 em ≥ 80% das réplicas | 10 | **3** |
+| Top-10 no top-20 de cada réplica (mediana) | — | 7 de 10 |
+| Trechos diferentes em algum top-10 | — | 268 |
+
+**Por quê.** O efeito tem sinal real (ver abaixo), mas cada trecho tem só ~13 dias de chuva moderada+, e o erro vem do dia, não do número de ônibus (quase não cai com mais horas). Dividindo os dias em duas metades, a correlação de postos é 0,26: fiabilidade 0,42 com todos os dias, e cerca de 0,59 com o dobro de dias de chuva (Spearman-Brown, indicativo). Uma simulação a partir do modelo foi descartada: ela herda as caudas do próprio modelo e dava o mesmo resultado com qualquer número de dias.
+
+**O que foi tentado para estabilizar:**
+
+| Alternativa | Resultado | Decisão |
+|---|---|---|
+| Mistura de normais em vez de uma normal | Jaccard 0,18 → 0,33; para de achatar extremos (−0,53 virava −0,13) | **adotada** |
+| Eixos de 1, 2 e 4 km | fiabilidade 0,46 (trecho: 0,43) | descartada |
+| Comparar só dentro do mesmo dia | 0,43 | descartada |
+| Estimadores robustos entre dias | 0,31–0,42, todos abaixo da soma | descartada |
+| Ranking por local, grade de 200 m a 1 km | Jaccard até 0,43; 2 a 4 de 10 | descartada |
+| Incluir chuva fraca | Jaccard 0,33; 2 de 10; fiabilidade 0,45 | descartada, mas confirma os lugares |
+
+**O que é estável: o grupo crítico (proposta para o Rafael).** Trechos entre os 5% piores em ≥ 80% das réplicas: **130 trechos em 88 locais** (trechos a até 300 m contam como um lugar), 67 km, razão mediana 0,844. Evidências:
+
+- **Fora da amostra:** os 1% piores escolhidos numa metade dos dias continuam ~11% abaixo da média na outra metade.
+- **Placebo:** nas horas secas dos mesmos dias, o grupo fica normal (−0,01). Efeito e placebo quase não se relacionam (Spearman 0,055).
+- **Definição alternativa:** com a chuva fraca incluída, o ranking tem correlação 0,84 com este, e 7 dos 10 primeiros são os mesmos.
+- **Perfil:** 58% em arteriais (geral 35%); 23% com ≥ 5 dias de alagamento (geral 7,6%); 15% perto de terminal (geral 5%).
+
+Os primeiros locais: Estr. de Itapecerica (0,50), Av. Sabin (0,51), R. Maria Eugênia Celso → R. Dr. Campos Moura (0,52; 5 trechos sobrepostos), R. Geraldo Fraga de Oliveira (0,57) e R. Getulina (0,58). **Cuidados:** a ordem não é estável; a Estr. de Itapecerica ficou bem mais rápida em outubro mesmo no seco (0,8 → 1,6), sinal de mudança local a investigar; vários líderes são gargalos muito lentos (5–9 km/h), onde a fila amplifica a chuva; perto de terminal, parte da queda pode ser espera.
+
+**KR4: tipo de via** (soma por grupo, comparada à via coletora, IC 95%):
+
+| Chuva | Coletora | Arterial | Expressa (VTR + rodovia) |
+|---|---|---|---|
+| fraca | 0,965 | −2,3% [−3,0 a −1,6] | −3,8% [−5,1 a −2,2] |
+| moderada | 0,956 | −3,2% [−4,5 a −2,1] | −5,5% [−8,4 a −3,5] |
+| forte+ | 0,933 | **−5,7%** [−7,3 a −3,1] | **−10,7%** [−18,3 a −2,5] |
+
+Via local não difere da coletora. Comparando trechos parecidos, a diferença da arterial fica em −0,4% [−1,2 a −0,2] no trecho típico e −1,6% [−2,6 a −0,4] ponderando por ônibus. A direção é a mesma, e a distância entre as leituras vem de os trechos mais cheios perderem mais (−1,4% por unidade de log das horas de ônibus).
+
+**KR4: histórico de alagamento** (dias distintos a até 100 m, 2013–2026):
+
+| Chuva | 0 dias | 1–4 dias | 5–19 dias | 20+ dias |
+|---|---|---|---|---|
+| fraca | 0,959 | 0,947 | 0,935 | 0,933 |
+| moderada | 0,946 | 0,930 | 0,918 | 0,907 |
+| forte+ | 0,921 | 0,888 | 0,853 | 0,847 |
+
+Parte disso é tipo de via: arteriais alagam mais. Dentro de cada classe (5+ dias contra 0, IC 95%):
+
+| Chuva | Em coletora | Em arterial |
+|---|---|---|
+| fraca | −3,9% [−6,8 a −1,5] | −1,7% [−3,2 a −0,5] |
+| moderada | −3,3% [−4,5 a −2,1] | −2,2% [−4,0 a 0,0] |
+| forte+ | −4,2% [−7,4 a −1,4] | −6,6% [−12,5 a +0,8] |
+
+**A associação existe e aparece dentro da classe de via, mas é mais clara com histórico frequente:** coletoras com 1–4 dias não diferem das sem histórico; em arteriais, 1–4 dias já mostram −1,1 a −1,7% nas chuvas fraca e moderada. No modelo com todas as covariáveis ela é pequena: −0,43% por unidade de log dos dias [−0,87 a −0,10], ou ~−0,8% indo de 0 a 5 dias. Ponderando por ônibus, −0,42% [−1,14 a +0,17], com intervalo que inclui zero. A amostra tem 13–16 dias de chuva forte+, e nenhuma enchente grande.
+
+**KR4: faixa e corredor.** Sem proteção detectável: −0,5% [−1,2 a +0,4] e 0,0% [−1,0 a +1,2] no modelo. Somando por grupo, parecem perder mais, mas estão em arteriais. Só faixas longas em via de mão única: −2,0%. Diferente da literatura, que espera atenuação. Limite: a geometria não diz o sentido da faixa, e no meio de um corredor linhas podem usar as pistas laterais.
+
+**Outros.** `dist_posto_km` = +0,13% por km [0,04 a 0,29]: quanto mais longe o posto, menor o efeito medido, como esperado com erro de medida da chuva; os efeitos são limites inferiores. `log_comprimento` = −1,8%: trechos curtos perdem menos. `perto_terminal` = −1,6% [−3,4 a +1,9]: inconclusivo, e muda de sinal ponderando por ônibus.
+
+**Tudo isso é associação, não causa:** trechos não foram sorteados para ter faixa ou alagar.
+
 # 2. Decisões de desenho
 
 ## 2.1 Grão: trecho físico × janela de 10 min
@@ -266,12 +337,12 @@ Separar assim evita estimar trecho × hora × dia da semana × semana direto (c�
 ## 2.7 KR3 — ranking dos trechos mais afetados
 
 1. **Estágio 1 — efeito bruto por trecho:** anomalia nas janelas com chuva ≥ moderada, com erro-padrão por bootstrap/agrupamento por dia. **Regra de dado mínimo ([N] dos KRs):** chuva ≥ moderada em **≥ 8 dias** e ≥ 30 janelas, e linha de base com ≥ 30 janelas secas por hora usada; posto a até 5 km.
-2. **Estágio 2 — encolhimento por Bayes empírico com covariáveis:** efeito do trecho ~ Normal(Xγ, τ²) (estilo Fay–Herriot, ou *adaptive shrinkage*, pacote `ashr`). Trechos com pouco dado são puxados para o esperado pelas covariáveis; os bem medidos mantêm o próprio efeito. **O mesmo modelo responde ao KR4**: γ são os efeitos de infraestrutura.
+2. **Estágio 2 — encolhimento por Bayes empírico com covariáveis:** efeito do trecho = Xγ + mistura de normais (*adaptive shrinkage*, como no `ashr`; a normal única achatava os extremos, seção 1.12). Trechos com pouco dado são puxados para o esperado pelas covariáveis; os bem medidos mantêm o próprio efeito. **O mesmo modelo responde ao KR4**: γ são os efeitos de infraestrutura.
 3. **Ranking pela posterior**, não pela estimativa bruta: para cada trecho, P(estar no top-10) e o intervalo do rank.
 4. **Estabilidade:** bootstrap por blocos de dia (estratificado), refazendo os dois estágios; frequência no top-10/top-20 e índice de Jaccard entre os top-10 das réplicas. Se os efeitos do topo forem muito próximos, usar bootstrap m-de-n.
 5. **Multiplicidade:** ~29 mil trechos → controlar a taxa de falsas descobertas (Benjamini–Hochberg) ou *local false sign rate* do `ashr` ao dizer quais trechos têm efeito.
 6. **Critério de "estável" definido antes de olhar** (a confirmar com o Rafael): o top-10 reportado aparece no top-20 em ≥ 80% das réplicas; Jaccard mediano ≥ 0,5.
-7. Alternativa de unidade, se o ranking por trecho for instável: **corredores** (sequências de trechos consecutivos de 0,5–1 km).
+7. Alternativa de unidade, se o ranking por trecho for instável: **corredores** (sequências de trechos consecutivos de 0,5–1 km). *Testada em 02/11 com eixos de 1–4 km e grade de 200 m a 1 km: não resolve (seção 1.12). Proposta: grupo crítico.*
 
 ## 2.8 KR4 — infraestrutura
 
@@ -295,7 +366,7 @@ Fontes levantadas e testadas a partir deste PC (detalhes, URLs e comandos em `do
 | Faixas exclusivas | 0,8 m | 15 m | 18,3% |
 | Corredores em operação | 7 m | 25 m | 8,6% |
 
-**Resultado da junção (02/11, teste no PC; sem trechos atípicos):**
+**Resultado da junção (02/11; sem trechos atípicos):**
 
 | Classe dominante | Trechos | km | Velocidade média (km/h) |
 |---|---|---|---|
@@ -344,7 +415,10 @@ Fontes levantadas e testadas a partir deste PC (detalhes, URLs e comandos em `do
 | `gold.obs_razao` (view) | trecho × janela | observações + velocidade esperada + razão |
 | `gold.efeito_cidade` | recorte × período × classe | KR1 da cidade, com IC |
 | `gold.recuperacao_cidade`, `gold.tempo_recuperacao` | período do fim × classe | KR2 da cidade: curva, tempo e perda |
-| `gold.efeito_trecho` (a fazer, notebook 11) | trecho | efeito bruto, efeito com encolhimento, IC, frequência no top-10/20, dados usados |
+| `gold.trecho_infra` | trecho | classe de via, faixa, corredor, dias de alagamento |
+| `gold.efeito_trecho` | trecho | efeito bruto e encolhido, IC, frequência no top-10/20 e entre os piores, grupo crítico, placebo |
+| `gold.estabilidade_ranking` | métrica | critério do KR3 e validações |
+| `gold.efeito_infra`, `gold.efeito_grupo` | modelo × termo; grupo × chuva | KR4 |
 
 # 4. Riscos e cuidados
 
