@@ -1,0 +1,2181 @@
+{
+ "datasets": [
+  {
+   "name": "kpis",
+   "displayName": "kpis",
+   "queryLines": [
+    "SELECT (SELECT count(*) FROM onibus.gold.efeito_trecho) AS trechos,\n",
+    "       (SELECT count_if(p_queda >= 0.95) FROM onibus.gold.efeito_trecho) AS com_queda,\n",
+    "       (SELECT round(100 * (razao - 1), 1) FROM onibus.gold.efeito_cidade WHERE recorte = 'tudo' AND periodo = 'todos' AND classe_chuva = 'moderada') AS queda_moderada,\n",
+    "       (SELECT round(100 * (razao - 1), 1) FROM onibus.gold.efeito_cidade WHERE recorte = 'tudo' AND periodo = 'tarde' AND classe_chuva = 'moderada') AS queda_moderada_tarde,\n",
+    "       (SELECT count_if(grupo_critico) FROM onibus.gold.efeito_trecho) AS criticos,\n",
+    "       (SELECT count(DISTINCT local_critico) FROM onibus.gold.efeito_trecho WHERE grupo_critico) AS locais,\n",
+    "       (SELECT count_if(classe_recuperacao <> 'indefinido') FROM onibus.gold.recuperacao_trecho) AS classificados,\n",
+    "       (SELECT count_if(classe_recuperacao IN ('1h_a_2h', 'mais_de_1h', 'mais_de_2h')) FROM onibus.gold.recuperacao_trecho) AS demoram,\n",
+    "       (SELECT round(valor, 2) FROM onibus.gold.estabilidade_ranking WHERE metrica = 'jaccard_mediano') AS jaccard,\n",
+    "       (SELECT int(valor) FROM onibus.gold.estabilidade_ranking WHERE metrica = 'top10_no_top20_em_80pct') AS estaveis,\n",
+    "       (SELECT round(valor, 2) FROM onibus.gold.estabilidade_ranking WHERE metrica = 'fiabilidade') AS fiabilidade\n"
+   ]
+  },
+  {
+   "name": "efeito_classe",
+   "displayName": "efeito_classe",
+   "queryLines": [
+    "SELECT CASE classe_chuva WHEN 'traco' THEN '1 traço' WHEN 'fraca' THEN '2 fraca' WHEN 'moderada' THEN '3 moderada'\n",
+    "                              WHEN 'forte' THEN '4 forte' WHEN 'muito_forte' THEN '5 muito forte' END AS chuva, CASE periodo WHEN 'todos' THEN 'dia todo' WHEN 'manha' THEN 'manhã' WHEN 'meio' THEN 'meio do dia'\n",
+    "                          WHEN 'tarde' THEN 'pico da tarde' WHEN 'noite' THEN 'noite' END AS periodo_label, round(100 * (razao - 1), 1) AS variacao_pct\n",
+    "FROM onibus.gold.efeito_cidade\n",
+    "WHERE recorte = 'tudo' AND NOT fragil AND periodo IN ('todos', 'tarde', 'meio')\n",
+    "  AND classe_chuva IN ('traco', 'fraca', 'moderada', 'forte', 'muito_forte')\n"
+   ]
+  },
+  {
+   "name": "efeito_tabela",
+   "displayName": "efeito_tabela",
+   "queryLines": [
+    "SELECT CASE classe_chuva WHEN 'traco' THEN '1 traço' WHEN 'fraca' THEN '2 fraca' WHEN 'moderada' THEN '3 moderada'\n",
+    "                              WHEN 'forte' THEN '4 forte' WHEN 'muito_forte' THEN '5 muito forte' END AS chuva, CASE periodo WHEN 'todos' THEN 'dia todo' WHEN 'manha' THEN 'manhã' WHEN 'meio' THEN 'meio do dia'\n",
+    "                          WHEN 'tarde' THEN 'pico da tarde' WHEN 'noite' THEN 'noite' END AS periodo_label, round(razao, 3) AS razao,\n",
+    "       CASE WHEN fragil THEN concat('sem intervalo (', n_dias, ' dias)')\n",
+    "            ELSE concat(format_number(ic_inf, 3), ' a ', format_number(ic_sup, 3)) END AS intervalo_95,\n",
+    "       n_dias, janelas\n",
+    "FROM onibus.gold.efeito_cidade\n",
+    "WHERE recorte = 'tudo' AND classe_chuva IN ('traco', 'fraca', 'moderada', 'forte', 'muito_forte')\n",
+    "ORDER BY 1, 2\n"
+   ]
+  },
+  {
+   "name": "recup_periodo",
+   "displayName": "recup_periodo",
+   "queryLines": [
+    "SELECT CASE periodo_fim WHEN 'manha' THEN 'manhã' WHEN 'meio' THEN 'meio do dia' WHEN 'tarde' THEN 'tarde' ELSE 'noite' END AS acabou,\n",
+    "       tau_min, razao\n",
+    "FROM onibus.gold.recuperacao_cidade WHERE classe_evento = 'moderada' AND periodo_fim IN ('manha', 'meio', 'tarde', 'noite')\n"
+   ]
+  },
+  {
+   "name": "recup_piores",
+   "displayName": "recup_piores",
+   "queryLines": [
+    "SELECT CASE WHEN metrica LIKE 'piores%' THEN '1% piores na chuva' ELSE 'resto dos trechos' END AS grupo,\n",
+    "       int(regexp_extract(metrica, '(\\\\d+)min', 1)) + 15 AS minutos, round(valor, 3) AS razao\n",
+    "FROM onibus.gold.validacao_recuperacao WHERE metrica LIKE '%fora_da_amostra%'\n"
+   ]
+  },
+  {
+   "name": "tempo_grupo",
+   "displayName": "tempo_grupo",
+   "queryLines": [
+    "SELECT CASE WHEN dimensao = 'via' AND grupo = 'coletora' THEN '1 coletora' WHEN dimensao = 'via' AND grupo = 'arterial' THEN '2 arterial'\n",
+    "                WHEN dimensao = 'via' AND grupo = 'expressa' THEN '3 expressa' WHEN dimensao = 'alagamento' AND grupo = '0 dias' THEN '4 sem alagamento'\n",
+    "                WHEN dimensao = 'alagamento' AND grupo = '1-4 dias' THEN '5 alagou 1-4 dias' WHEN dimensao = 'alagamento' AND grupo = '5+ dias' THEN '6 alagou 5+ dias'\n",
+    "                WHEN dimensao = 'onibus' AND grupo = 'sem faixa nem corredor' THEN '7 sem faixa' WHEN dimensao = 'onibus' AND grupo = 'faixa' THEN '8 faixa'\n",
+    "                WHEN dimensao = 'onibus' AND grupo = 'corredor' THEN '9 corredor' END AS grupo_label, tempo_rec_min, round(perda_min, 1) AS perda_min\n",
+    "FROM onibus.gold.tempo_recuperacao_grupo\n",
+    "WHERE periodo = 'fora_do_pico' AND dimensao IN ('via', 'alagamento', 'onibus') AND CASE WHEN dimensao = 'via' AND grupo = 'coletora' THEN '1 coletora' WHEN dimensao = 'via' AND grupo = 'arterial' THEN '2 arterial'\n",
+    "                WHEN dimensao = 'via' AND grupo = 'expressa' THEN '3 expressa' WHEN dimensao = 'alagamento' AND grupo = '0 dias' THEN '4 sem alagamento'\n",
+    "                WHEN dimensao = 'alagamento' AND grupo = '1-4 dias' THEN '5 alagou 1-4 dias' WHEN dimensao = 'alagamento' AND grupo = '5+ dias' THEN '6 alagou 5+ dias'\n",
+    "                WHEN dimensao = 'onibus' AND grupo = 'sem faixa nem corredor' THEN '7 sem faixa' WHEN dimensao = 'onibus' AND grupo = 'faixa' THEN '8 faixa'\n",
+    "                WHEN dimensao = 'onibus' AND grupo = 'corredor' THEN '9 corredor' END IS NOT NULL\n"
+   ]
+  },
+  {
+   "name": "perda_grupo",
+   "displayName": "perda_grupo",
+   "queryLines": [
+    "SELECT CASE WHEN dimensao = 'via' AND grupo = 'coletora' THEN '1 coletora' WHEN dimensao = 'via' AND grupo = 'arterial' THEN '2 arterial'\n",
+    "                WHEN dimensao = 'via' AND grupo = 'expressa' THEN '3 expressa' WHEN dimensao = 'alagamento' AND grupo = '0 dias' THEN '4 sem alagamento'\n",
+    "                WHEN dimensao = 'alagamento' AND grupo = '1-4 dias' THEN '5 alagou 1-4 dias' WHEN dimensao = 'alagamento' AND grupo = '5+ dias' THEN '6 alagou 5+ dias'\n",
+    "                WHEN dimensao = 'onibus' AND grupo = 'sem faixa nem corredor' THEN '7 sem faixa' WHEN dimensao = 'onibus' AND grupo = 'faixa' THEN '8 faixa'\n",
+    "                WHEN dimensao = 'onibus' AND grupo = 'corredor' THEN '9 corredor' END AS grupo_label, round(perda_min, 1) AS perda_min\n",
+    "FROM onibus.gold.tempo_recuperacao_grupo\n",
+    "WHERE periodo = 'pico' AND dimensao IN ('via', 'alagamento', 'onibus') AND CASE WHEN dimensao = 'via' AND grupo = 'coletora' THEN '1 coletora' WHEN dimensao = 'via' AND grupo = 'arterial' THEN '2 arterial'\n",
+    "                WHEN dimensao = 'via' AND grupo = 'expressa' THEN '3 expressa' WHEN dimensao = 'alagamento' AND grupo = '0 dias' THEN '4 sem alagamento'\n",
+    "                WHEN dimensao = 'alagamento' AND grupo = '1-4 dias' THEN '5 alagou 1-4 dias' WHEN dimensao = 'alagamento' AND grupo = '5+ dias' THEN '6 alagou 5+ dias'\n",
+    "                WHEN dimensao = 'onibus' AND grupo = 'sem faixa nem corredor' THEN '7 sem faixa' WHEN dimensao = 'onibus' AND grupo = 'faixa' THEN '8 faixa'\n",
+    "                WHEN dimensao = 'onibus' AND grupo = 'corredor' THEN '9 corredor' END IS NOT NULL\n"
+   ]
+  },
+  {
+   "name": "mapa_recuperacao",
+   "displayName": "mapa_recuperacao",
+   "queryLines": [
+    "SELECT lat, lon, CASE WHEN classe_recuperacao = 'mais_de_2h' THEN 'mais de 2 h' ELSE 'mais de 1 h' END AS demora, nome_de, nome_ate\n",
+    "FROM onibus.gold.recuperacao_trecho WHERE classe_recuperacao IN ('1h_a_2h', 'mais_de_1h', 'mais_de_2h')\n"
+   ]
+  },
+  {
+   "name": "classes_recuperacao",
+   "displayName": "classes_recuperacao",
+   "queryLines": [
+    "SELECT CASE classe_recuperacao WHEN 'ate_1h' THEN '1 até 1 h' WHEN '1h_a_2h' THEN '2 de 1 a 2 h' WHEN 'mais_de_1h' THEN '3 mais de 1 h'\n",
+    "                               WHEN 'mais_de_2h' THEN '4 mais de 2 h' ELSE '5 indefinido' END AS classe, count(*) AS trechos\n",
+    "FROM onibus.gold.recuperacao_trecho GROUP BY 1\n"
+   ]
+  },
+  {
+   "name": "mapa_critico",
+   "displayName": "mapa_critico",
+   "queryLines": [
+    "SELECT lat, lon, round(razao_encolhida, 2) AS razao, nome_de, nome_ate FROM onibus.gold.efeito_trecho WHERE grupo_critico\n"
+   ]
+  },
+  {
+   "name": "locais",
+   "displayName": "locais",
+   "queryLines": [
+    "WITH l AS (SELECT local_critico, count(*) AS trechos, round(median(razao_encolhida), 2) AS razao_mediana, min(rank) AS melhor_posicao,\n",
+    "                  round(median(v_kmh_media), 1) AS v_kmh, max(dias_alag_100m) AS dias_alagamento, round(avg(placebo_seco), 2) AS placebo\n",
+    "           FROM onibus.gold.efeito_trecho WHERE grupo_critico GROUP BY 1)\n",
+    "SELECT l.melhor_posicao, concat(t.nome_de, ' → ', t.nome_ate) AS lugar, l.trechos, l.razao_mediana, l.v_kmh, l.dias_alagamento, l.placebo,\n",
+    "       t.classe_dominante AS via\n",
+    "FROM l JOIN onibus.gold.efeito_trecho t ON t.rank = l.melhor_posicao ORDER BY 1\n"
+   ]
+  },
+  {
+   "name": "infra_via",
+   "displayName": "infra_via",
+   "queryLines": [
+    "SELECT CASE chuva WHEN 'fraca' THEN '1 fraca' WHEN 'moderada' THEN '2 moderada' ELSE '3 forte ou mais' END AS chuva_label, CASE grupo WHEN 'coletora' THEN '1 coletora' WHEN 'arterial' THEN '2 arterial' ELSE '3 expressa' END AS grupo_label,\n",
+    "       round(100 * (razao - 1), 1) AS variacao_pct\n",
+    "FROM onibus.gold.efeito_grupo WHERE dimensao = 'via' AND grupo IN ('coletora', 'arterial', 'expressa')\n"
+   ]
+  },
+  {
+   "name": "infra_alag",
+   "displayName": "infra_alag",
+   "queryLines": [
+    "SELECT CASE chuva WHEN 'fraca' THEN '1 fraca' WHEN 'moderada' THEN '2 moderada' ELSE '3 forte ou mais' END AS chuva_label, CASE grupo WHEN '0 dias' THEN '1 sem alagamento' WHEN '1-4 dias' THEN '2 de 1 a 4 dias' WHEN '5-19 dias' THEN '3 de 5 a 19 dias' ELSE '4 20 dias ou mais' END AS grupo_label,\n",
+    "       round(100 * (razao - 1), 1) AS variacao_pct\n",
+    "FROM onibus.gold.efeito_grupo WHERE dimensao = 'alagamento'\n"
+   ]
+  },
+  {
+   "name": "infra_dentro",
+   "displayName": "infra_dentro",
+   "queryLines": [
+    "SELECT CASE chuva WHEN 'fraca' THEN '1 fraca' WHEN 'moderada' THEN '2 moderada' ELSE '3 forte ou mais' END AS chuva_label, CASE dimensao WHEN 'alagamento_em_arterial' THEN 'em arterial' ELSE 'em coletora' END AS via, round(100 * (vs_referencia - 1), 1) AS diferenca_pct\n",
+    "FROM onibus.gold.efeito_grupo WHERE dimensao LIKE 'alagamento_em%' AND grupo = '5+ dias'\n"
+   ]
+  },
+  {
+   "name": "infra_modelo",
+   "displayName": "infra_modelo",
+   "queryLines": [
+    "SELECT CASE termo WHEN 'via_arterial' THEN 'via arterial (contra coletora)' WHEN 'via_expressa' THEN 'via expressa (contra coletora)'\n",
+    "                      WHEN 'via_local' THEN 'via local (contra coletora)' WHEN 'alag_log1p_dias' THEN 'alagamento (por log dos dias)'\n",
+    "                      WHEN 'frac_faixa' THEN 'faixa de ônibus' WHEN 'frac_corredor' THEN 'corredor de ônibus'\n",
+    "                      WHEN 'perto_terminal' THEN 'perto de terminal' WHEN 'log_comprimento' THEN 'comprimento (por log)'\n",
+    "                      WHEN 'log_horas_onibus' THEN 'horas de ônibus (por log)' WHEN 'dist_posto_km' THEN 'distância ao posto (por km)' END AS atributo, round(100 * (exp(max_by(coef_log, modelo = 'principal')) - 1), 2) AS trecho_tipico_pct,\n",
+    "       concat(format_number(100 * (exp(max_by(ic_inf, modelo = 'principal')) - 1), 2), ' a ', format_number(100 * (exp(max_by(ic_sup, modelo = 'principal')) - 1), 2)) AS intervalo_tipico,\n",
+    "       round(100 * (exp(max_by(coef_log, modelo = 'ponderado_por_onibus')) - 1), 2) AS peso_onibus_pct,\n",
+    "       concat(format_number(100 * (exp(max_by(ic_inf, modelo = 'ponderado_por_onibus')) - 1), 2), ' a ', format_number(100 * (exp(max_by(ic_sup, modelo = 'ponderado_por_onibus')) - 1), 2)) AS intervalo_onibus\n",
+    "FROM onibus.gold.efeito_infra WHERE modelo IN ('principal', 'ponderado_por_onibus') GROUP BY termo ORDER BY 1\n"
+   ]
+  }
+ ],
+ "pages": [
+  {
+   "name": "resumo",
+   "displayName": "Resumo",
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layoutVersion": "GRID_V1",
+   "layout": [
+    {
+     "widget": {
+      "name": "kpi-trechos",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "trechos",
+           "expression": "`trechos`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Trechos medidos",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "KR1: regra de dado mínimo",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "trechos",
+         "displayName": "Trechos medidos"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-com_queda",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "com_queda",
+           "expression": "`com_queda`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Com queda quase certa",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "KR1: probabilidade ≥ 95%",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "com_queda",
+         "displayName": "Com queda quase certa"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-queda_moderada",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "queda_moderada",
+           "expression": "`queda_moderada`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Queda na chuva moderada (%)",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "cidade, dia todo",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "queda_moderada",
+         "displayName": "Queda na chuva moderada (%)"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-queda_moderada_tarde",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "queda_moderada_tarde",
+           "expression": "`queda_moderada_tarde`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "No pico da tarde (%)",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "mesma chuva, 16h às 19h",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "queda_moderada_tarde",
+         "displayName": "No pico da tarde (%)"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 9,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-classificados",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "classificados",
+           "expression": "`classificados`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Trechos com faixa de recuperação",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "KR2",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "classificados",
+         "displayName": "Trechos com faixa de recuperação"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 2,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-criticos",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "criticos",
+           "expression": "`criticos`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Trechos críticos",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "KR3: grupo estável",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "criticos",
+         "displayName": "Trechos críticos"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 2,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-locais",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "locais",
+           "expression": "`locais`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Lugares críticos",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "KR3: trechos a até 300 m juntos",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "locais",
+         "displayName": "Lugares críticos"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 2,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-jaccard",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "jaccard",
+           "expression": "`jaccard`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Jaccard do top-10",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "KR3: mínimo era 0,5",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "jaccard",
+         "displayName": "Jaccard do top-10"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 9,
+      "y": 2,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "resumo-texto",
+      "multilineTextboxSpec": {
+       "lines": [
+        "### O que descobrimos\n",
+        "- **A chuva derruba a velocidade, e quanto mais forte, mais:** −4,7% na chuva fraca e −14,6% na muito forte, no dia todo.\n",
+        "- **O pico da tarde é o momento mais sensível:** na chuva moderada, a queda sobe de −6,3% para −10,3%.\n",
+        "- **A hora em que a chuva acaba pesa mais que a intensidade:** fora dos picos a velocidade volta em até 40 min; nos picos, leva de 1 a 2 h.\n",
+        "- **Os piores trechos demoram cerca do dobro:** ~2 h contra ~1 h, medidos em dias que não entraram na escolha deles.\n",
+        "- **Via importa:** na chuva forte, arterial perde 5,7% a mais que coletora, e via expressa 10,7%.\n",
+        "- **Alagamento frequente pesa 2 a 4%**, mesmo comparando dentro do mesmo tipo de via.\n",
+        "- **Faixa e corredor não mostraram proteção detectável.**\n"
+       ]
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 4,
+      "width": 7,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "resumo-leitura",
+      "multilineTextboxSpec": {
+       "lines": [
+        "### Como ler\n",
+        "- **Razão ou variação:** comparam a velocidade na chuva com o normal do mesmo trecho, horário, dia da semana e semana.\n",
+        "- **Período:** dia útil, 6h às 23h, 25/08 a 25/10/2026, 42 dias úteis. Tudo depende do último download de chuva.\n",
+        "- **Soma e trecho típico:** somar os ônibus dá o que o passageiro sente, e tempo preso pesa mais. O trecho típico perde menos.\n",
+        "- **Associação não é causa:** trechos não foram sorteados para ter faixa ou alagar.\n",
+        "- Textos e títulos são de 02/11/2026. Gráficos e contadores seguem as tabelas. Detalhes em `docs/projeto_completo.pdf`.\n"
+       ]
+      }
+     },
+     "position": {
+      "x": 7,
+      "y": 4,
+      "width": 5,
+      "height": 8
+     }
+    }
+   ]
+  },
+  {
+   "name": "kr1",
+   "displayName": "KR1: queda na chuva",
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layoutVersion": "GRID_V1",
+   "layout": [
+    {
+     "widget": {
+      "name": "kr1-barra",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "efeito_classe",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "chuva",
+           "expression": "`chuva`"
+          },
+          {
+           "name": "variacao_pct",
+           "expression": "`variacao_pct`"
+          },
+          {
+           "name": "periodo_label",
+           "expression": "`periodo_label`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Quanto mais forte a chuva, maior a queda, e o pico da tarde perde mais",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Variação da velocidade contra o normal, em %. Só células com pelo menos 8 dias.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "chuva",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "y": {
+         "fieldName": "variacao_pct",
+         "displayName": "variação (%)",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "periodo_label",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "dia todo",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 1
+            }
+           },
+           {
+            "value": "pico da tarde",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           },
+           {
+            "value": "meio do dia",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 3
+            }
+           }
+          ],
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "layout": "group"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "kr1-tabela",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "efeito_tabela",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "chuva",
+           "expression": "`chuva`"
+          },
+          {
+           "name": "periodo_label",
+           "expression": "`periodo_label`"
+          },
+          {
+           "name": "razao",
+           "expression": "`razao`"
+          },
+          {
+           "name": "intervalo_95",
+           "expression": "`intervalo_95`"
+          },
+          {
+           "name": "n_dias",
+           "expression": "`n_dias`"
+          },
+          {
+           "name": "janelas",
+           "expression": "`janelas`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "table",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Todos os números, com intervalo",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Bootstrap de 2.000 reamostras de dias",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "columns": [
+         {
+          "fieldName": "chuva",
+          "displayName": "Chuva"
+         },
+         {
+          "fieldName": "periodo_label",
+          "displayName": "Período"
+         },
+         {
+          "fieldName": "razao",
+          "displayName": "Razão (1 = normal)"
+         },
+         {
+          "fieldName": "intervalo_95",
+          "displayName": "Intervalo de 95%"
+         },
+         {
+          "fieldName": "n_dias",
+          "displayName": "Dias"
+         },
+         {
+          "fieldName": "janelas",
+          "displayName": "Janelas"
+         }
+        ]
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 8,
+      "width": 12,
+      "height": 9
+     }
+    }
+   ]
+  },
+  {
+   "name": "kr2",
+   "displayName": "KR2: recuperação",
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layoutVersion": "GRID_V1",
+   "layout": [
+    {
+     "widget": {
+      "name": "kr2-periodo",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "recup_periodo",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "tau_min",
+           "expression": "`tau_min`"
+          },
+          {
+           "name": "razao",
+           "expression": "`razao`"
+          },
+          {
+           "name": "acabou",
+           "expression": "`acabou`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "line",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "A hora em que a chuva acaba decide quanto a velocidade demora a voltar",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Chuva moderada, cidade. Razão por minutos depois do fim, pelo período em que acabou.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "tau_min",
+         "displayName": "minutos depois do fim",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "y": {
+         "fieldName": "razao",
+         "displayName": "razão (1 = normal)",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "acabou",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "manhã",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 1
+            }
+           },
+           {
+            "value": "meio do dia",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           },
+           {
+            "value": "tarde",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 3
+            }
+           },
+           {
+            "value": "noite",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 4
+            }
+           }
+          ],
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr2-piores",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "recup_piores",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "minutos",
+           "expression": "`minutos`"
+          },
+          {
+           "name": "razao",
+           "expression": "`razao`"
+          },
+          {
+           "name": "grupo",
+           "expression": "`grupo`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "line",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Os piores trechos voltam em ~2 h, o resto em ~1 h",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Trechos escolhidos numa metade dos dias, recuperação medida na outra.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "minutos",
+         "displayName": "minutos depois do fim",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "y": {
+         "fieldName": "razao",
+         "displayName": "razão (1 = normal)",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "grupo",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "resto dos trechos",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 1
+            }
+           },
+           {
+            "value": "1% piores na chuva",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           }
+          ],
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 0,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr2-tempo",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "tempo_grupo",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "grupo_label",
+           "expression": "`grupo_label`"
+          },
+          {
+           "name": "tempo_rec_min",
+           "expression": "`tempo_rec_min`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Fora do pico: via rápida e alagamento demoram mais a voltar",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Minutos até a razão ficar em pelo menos 0,99 por 30 min.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "grupo_label",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "y": {
+         "fieldName": "tempo_rec_min",
+         "displayName": "minutos",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "label": {
+         "show": true
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 7,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr2-perda",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "perda_grupo",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "grupo_label",
+           "expression": "`grupo_label`"
+          },
+          {
+           "name": "perda_min",
+           "expression": "`perda_min`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "No pico: compare a perda, porque quase nada volta em 3 h",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Minutos de operação normal perdidos por ônibus nas 2 h depois do fim.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "grupo_label",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "y": {
+         "fieldName": "perda_min",
+         "displayName": "minutos perdidos",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "label": {
+         "show": true
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 7,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr2-classes",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "classes_recuperacao",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "classe",
+           "expression": "`classe`"
+          },
+          {
+           "name": "trechos",
+           "expression": "`trechos`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Por trecho: a grande maioria volta em até 1 h",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Faixa de recuperação de cada trecho com dado suficiente.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "classe",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "y": {
+         "fieldName": "trechos",
+         "displayName": "trechos",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "label": {
+         "show": true
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 14,
+      "width": 4,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr2-mapa",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "mapa_recuperacao",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "lat",
+           "expression": "`lat`"
+          },
+          {
+           "name": "lon",
+           "expression": "`lon`"
+          },
+          {
+           "name": "demora",
+           "expression": "`demora`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "symbol-map",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Onde a velocidade demora mais a voltar",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Trechos marcados como acima de 1 h",
+         "fields": []
+        }
+       },
+       "mark": {
+        "opacity": 0.85,
+        "shape": "circle"
+       },
+       "encodings": {
+        "coordinates": {
+         "latitude": {
+          "fieldName": "lat"
+         },
+         "longitude": {
+          "fieldName": "lon"
+         }
+        },
+        "color": {
+         "fieldName": "demora",
+         "displayName": "Demora",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "mais de 1 h",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           },
+           {
+            "value": "mais de 2 h",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 4
+            }
+           }
+          ],
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 4,
+      "y": 14,
+      "width": 5,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr2-texto",
+      "multilineTextboxSpec": {
+       "lines": [
+        "### Como ler\n",
+        "Uma janela isolada varia ±23%, então não há um tempo exato por trecho: por trecho há uma **faixa**, e o tempo em minutos fica para grupos de trechos.\n",
+        "\n",
+        "As três faixas valem para a mistura de chuva da cidade. Depois de chuva no pico, o mesmo trecho demora mais.\n"
+       ]
+      }
+     },
+     "position": {
+      "x": 9,
+      "y": 14,
+      "width": 3,
+      "height": 7
+     }
+    }
+   ]
+  },
+  {
+   "name": "kr3",
+   "displayName": "KR3: trechos críticos",
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layoutVersion": "GRID_V1",
+   "layout": [
+    {
+     "widget": {
+      "name": "kpi-criticos",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "criticos",
+           "expression": "`criticos`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Trechos críticos",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "entre os 5% piores em ≥ 80% das reamostras",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "criticos",
+         "displayName": "Trechos críticos"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-locais",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "locais",
+           "expression": "`locais`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Lugares",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "trechos a até 300 m contam como um",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "locais",
+         "displayName": "Lugares"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-jaccard",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "jaccard",
+           "expression": "`jaccard`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Jaccard do top-10",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "critério: pelo menos 0,5",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "jaccard",
+         "displayName": "Jaccard do top-10"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kpi-estaveis",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "estaveis",
+           "expression": "`estaveis`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Estáveis entre os 10 primeiros",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "critério: 10 de 10",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "value": {
+         "fieldName": "estaveis",
+         "displayName": "Estáveis entre os 10 primeiros"
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 9,
+      "y": 0,
+      "width": 3,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "kr3-mapa",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "mapa_critico",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "lat",
+           "expression": "`lat`"
+          },
+          {
+           "name": "lon",
+           "expression": "`lon`"
+          },
+          {
+           "name": "razao",
+           "expression": "`razao`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "symbol-map",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Os trechos críticos se espalham pela cidade",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Quanto mais escuro, maior a queda",
+         "fields": []
+        }
+       },
+       "mark": {
+        "opacity": 0.85,
+        "shape": "circle"
+       },
+       "encodings": {
+        "coordinates": {
+         "latitude": {
+          "fieldName": "lat"
+         },
+         "longitude": {
+          "fieldName": "lon"
+         }
+        },
+        "color": {
+         "fieldName": "razao",
+         "displayName": "Razão",
+         "scale": {
+          "type": "quantitative",
+          "colorRamp": {
+           "mode": "single-hue",
+           "baseColor": {
+            "themeColorType": "visualizationColors",
+            "position": 2
+           }
+          },
+          "reverse": true
+         }
+        }
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 2,
+      "width": 7,
+      "height": 11
+     }
+    },
+    {
+     "widget": {
+      "name": "kr3-texto",
+      "multilineTextboxSpec": {
+       "lines": [
+        "### Por que não há um top-10 exato\n",
+        "O critério, fixado antes de olhar, pedia Jaccard de pelo menos 0,5 e os 10 primeiros estáveis. O resultado reprovou, em todas as alternativas testadas. Com ~13 dias de chuva por trecho, sabemos **quais lugares são críticos**, mas não a ordem exata entre eles.\n",
+        "\n",
+        "O grupo crítico reúne trechos entre os 5% piores em ao menos 80% das 500 reamostras de dias. Nas horas secas dos mesmos dias eles ficam normais, então a queda aparece com a chuva.\n",
+        "\n",
+        "**Cuidados:** a Estr. de Itapecerica mudou de regime em outubro, mesmo no seco. Trechos muito lentos são gargalos, onde a fila amplifica a chuva. Perto de terminal, parte da queda pode ser espera.\n"
+       ]
+      }
+     },
+     "position": {
+      "x": 7,
+      "y": 2,
+      "width": 5,
+      "height": 11
+     }
+    },
+    {
+     "widget": {
+      "name": "kr3-locais",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "locais",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "melhor_posicao",
+           "expression": "`melhor_posicao`"
+          },
+          {
+           "name": "lugar",
+           "expression": "`lugar`"
+          },
+          {
+           "name": "via",
+           "expression": "`via`"
+          },
+          {
+           "name": "trechos",
+           "expression": "`trechos`"
+          },
+          {
+           "name": "razao_mediana",
+           "expression": "`razao_mediana`"
+          },
+          {
+           "name": "v_kmh",
+           "expression": "`v_kmh`"
+          },
+          {
+           "name": "dias_alagamento",
+           "expression": "`dias_alagamento`"
+          },
+          {
+           "name": "placebo",
+           "expression": "`placebo`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "table",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Os 88 lugares críticos",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "A posição é indicativa: a ordem exata não é estável",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "columns": [
+         {
+          "fieldName": "melhor_posicao",
+          "displayName": "Posição"
+         },
+         {
+          "fieldName": "lugar",
+          "displayName": "Lugar"
+         },
+         {
+          "fieldName": "via",
+          "displayName": "Via"
+         },
+         {
+          "fieldName": "trechos",
+          "displayName": "Trechos"
+         },
+         {
+          "fieldName": "razao_mediana",
+          "displayName": "Razão"
+         },
+         {
+          "fieldName": "v_kmh",
+          "displayName": "km/h"
+         },
+         {
+          "fieldName": "dias_alagamento",
+          "displayName": "Dias de alagamento"
+         },
+         {
+          "fieldName": "placebo",
+          "displayName": "Placebo no seco"
+         }
+        ]
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 13,
+      "width": 12,
+      "height": 10
+     }
+    }
+   ]
+  },
+  {
+   "name": "kr4",
+   "displayName": "KR4: infraestrutura",
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layoutVersion": "GRID_V1",
+   "layout": [
+    {
+     "widget": {
+      "name": "kr4-via",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "infra_via",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "chuva_label",
+           "expression": "`chuva_label`"
+          },
+          {
+           "name": "variacao_pct",
+           "expression": "`variacao_pct`"
+          },
+          {
+           "name": "grupo_label",
+           "expression": "`grupo_label`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Via mais rápida perde mais na chuva",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Variação contra o normal, em %, somando os ônibus.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "chuva_label",
+         "displayName": "intensidade da chuva",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "y": {
+         "fieldName": "variacao_pct",
+         "displayName": "variação (%)",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "grupo_label",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "1 coletora",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 1
+            }
+           },
+           {
+            "value": "2 arterial",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           },
+           {
+            "value": "3 expressa",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 3
+            }
+           }
+          ],
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "layout": "group"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr4-alag",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "infra_alag",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "chuva_label",
+           "expression": "`chuva_label`"
+          },
+          {
+           "name": "variacao_pct",
+           "expression": "`variacao_pct`"
+          },
+          {
+           "name": "grupo_label",
+           "expression": "`grupo_label`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Quem tem histórico de alagamento perde mais",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Dias de alagamento a até 100 m, de 2013 a 24/08/2026.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "chuva_label",
+         "displayName": "intensidade da chuva",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "y": {
+         "fieldName": "variacao_pct",
+         "displayName": "variação (%)",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "grupo_label",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "1 sem alagamento",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 1
+            }
+           },
+           {
+            "value": "2 de 1 a 4 dias",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           },
+           {
+            "value": "3 de 5 a 19 dias",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 3
+            }
+           },
+           {
+            "value": "4 20 dias ou mais",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 4
+            }
+           }
+          ],
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "layout": "group"
+       }
+      }
+     },
+     "position": {
+      "x": 6,
+      "y": 0,
+      "width": 6,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr4-dentro",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "infra_dentro",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "chuva_label",
+           "expression": "`chuva_label`"
+          },
+          {
+           "name": "diferenca_pct",
+           "expression": "`diferenca_pct`"
+          },
+          {
+           "name": "via",
+           "expression": "`via`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "O alagamento pesa mesmo dentro do mesmo tipo de via",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Trechos com 5 dias ou mais, contra os sem histórico, em %.",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "x": {
+         "fieldName": "chuva_label",
+         "displayName": "intensidade da chuva",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "y": {
+         "fieldName": "diferenca_pct",
+         "displayName": "diferença (%)",
+         "scale": {
+          "type": "quantitative"
+         }
+        },
+        "color": {
+         "fieldName": "via",
+         "displayName": " ",
+         "scale": {
+          "type": "categorical",
+          "mappings": [
+           {
+            "value": "em coletora",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 1
+            }
+           },
+           {
+            "value": "em arterial",
+            "color": {
+             "themeColorType": "visualizationColors",
+             "position": 2
+            }
+           }
+          ],
+          "sort": {
+           "by": "natural-order"
+          }
+         }
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "layout": "group"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 7,
+      "width": 5,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr4-texto",
+      "multilineTextboxSpec": {
+       "lines": [
+        "### Duas leituras\n",
+        "**Soma por grupo** (gráficos): mostra o que o ônibus sente.\n",
+        "\n",
+        "**Modelo** (tabela): compara trechos parecidos, em %. Negativo quer dizer que perde mais. Intervalo que inclui zero quer dizer que não dá para afirmar.\n",
+        "\n",
+        "As diferenças ficam menores no modelo porque via, faixa, corredor e alagamento vêm juntos, e os trechos mais cheios perdem mais.\n"
+       ]
+      }
+     },
+     "position": {
+      "x": 5,
+      "y": 7,
+      "width": 7,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "kr4-modelo",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "infra_modelo",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "atributo",
+           "expression": "`atributo`"
+          },
+          {
+           "name": "trecho_tipico_pct",
+           "expression": "`trecho_tipico_pct`"
+          },
+          {
+           "name": "intervalo_tipico",
+           "expression": "`intervalo_tipico`"
+          },
+          {
+           "name": "peso_onibus_pct",
+           "expression": "`peso_onibus_pct`"
+          },
+          {
+           "name": "intervalo_onibus",
+           "expression": "`intervalo_onibus`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "table",
+       "frame": {
+        "showTitle": true,
+        "title": {
+         "value": "Comparando trechos parecidos",
+         "fields": []
+        },
+        "showDescription": true,
+        "description": {
+         "value": "Coeficientes do modelo, em %",
+         "fields": []
+        }
+       },
+       "encodings": {
+        "columns": [
+         {
+          "fieldName": "atributo",
+          "displayName": "Atributo"
+         },
+         {
+          "fieldName": "trecho_tipico_pct",
+          "displayName": "Trecho típico (%)"
+         },
+         {
+          "fieldName": "intervalo_tipico",
+          "displayName": "Intervalo de 95%"
+         },
+         {
+          "fieldName": "peso_onibus_pct",
+          "displayName": "Peso por ônibus (%)"
+         },
+         {
+          "fieldName": "intervalo_onibus",
+          "displayName": "Intervalo de 95%"
+         }
+        ]
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 14,
+      "width": 12,
+      "height": 8
+     }
+    }
+   ]
+  }
+ ]
+}

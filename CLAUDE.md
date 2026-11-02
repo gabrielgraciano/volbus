@@ -381,6 +381,9 @@ Documento: **`docs/gold_desenho.md`** (+ `docs/gold_literatura.md`, `docs/gold_f
 - Por trecho: ~78 janelas de chuva ≥ moderada mas só **~12 dias** → bootstrap por dia + Bayes empírico (estágio 2 com covariáveis = KR4).
 - KR4: GeoSampa WFS/arquivos abertos (classificação viária CET, faixas, corredores, Defesa Civil 2013–2026); baixar no PC e subir para `bronze/raw/infra/`.
 
+### Dashboard de resultados
+"Ônibus × Chuva: resultados" (AI/BI, id `01f1d713b2b617b0b517dc3ba7f6c4f0`, rascunho, 02/11): abas Resumo, KR1 a KR4. Gerado por `dashboards/gerar_dash_resultados.py` (`validar`, `criar`, `atualizar`), separado do "Dash Teste". Gráficos seguem as tabelas gold; números em títulos e textos são de 02/11 e precisam de revisão quando houver chuva nova.
+
 ### Documento completo
 `docs/projeto_completo.pdf` (02/11, 65 páginas): o projeto inteiro, da coleta aos KRs, com todas as decisões. Fonte em `docs/projeto_completo.md`, figuras de `analises/gold_exploracao/figuras_projeto.py`, PDF gerado por `docs/gerar_pdf_projeto.py`. Ao mudar resultados, atualizar o documento.
 
