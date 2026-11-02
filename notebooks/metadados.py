@@ -307,6 +307,83 @@ TABELAS = {
                        "lacunar (completude < 90%), ok."),
         },
     },
+    "onibus.gold.recuperacao_trecho": {
+        "comentario":
+            "KR2 por trecho. Depois de eventos com pico >= 2,5 mm/h, em dia útil: razão na 1ª, 2ª e 3ª hora, classe de recuperação e "
+            "perda nas 2 h seguintes, para quem tem pelo menos 8 dias e 30 janelas na 2ª hora. Razões na mistura de chuva da cidade, "
+            "depois do encolhimento. Não é um tempo exato: uma janela isolada varia ±23%. Notebook 13_gold_recuperacao_trecho.",
+        "colunas": {
+            "trecho_id": "Trecho físico (gold.trecho).",
+            "n_dias_h2": "Dias com janelas na 2ª hora depois do fim.",
+            "janelas_h2": "Janelas na 2ª hora depois do fim.",
+            "razao_h1": "Razão encolhida na 1ª hora depois do fim. 1 = normal.",
+            "p_abaixo_h1": "Probabilidade de a razão verdadeira da 1ª hora estar abaixo de 0,99.",
+            "razao_h2": "Razão encolhida na 2ª hora depois do fim.",
+            "p_abaixo_h2": "Probabilidade de a razão verdadeira da 2ª hora estar abaixo de 0,99.",
+            "razao_h3": "Razão encolhida na 3ª hora depois do fim. Nulo se o trecho não tem dado suficiente.",
+            "p_abaixo_h3": "Probabilidade de a razão verdadeira da 3ª hora estar abaixo de 0,99.",
+            "classe_recuperacao": "ate_1h, 1h_a_2h, mais_de_2h, mais_de_1h (3ª hora sem resposta) ou indefinido.",
+            "perda_2h_min": "Minutos de operação normal perdidos por ônibus nas 2 h depois do fim. Negativo = mais rápido que o normal.",
+            "perda_ic_inf": "Limite inferior do intervalo de 95% da perda.",
+            "perda_ic_sup": "Limite superior do intervalo de 95% da perda.",
+            "nome_de": "Parada de início.",
+            "nome_ate": "Parada de fim.",
+            "classe_dominante": "Classe de via com maior fração do trecho.",
+            "dias_alag_100m": "Dias distintos com alagamento a até 100 m, de 2013 a 24/08/2026.",
+            "lat": "Latitude do ponto médio.",
+            "lon": "Longitude do ponto médio.",
+            "grupo_critico": "Trecho do grupo crítico do notebook 12.",
+        },
+    },
+    "onibus.gold.recuperacao_grupo": {
+        "comentario":
+            "KR2 por grupo de trechos. Curva da razão depois do fim de eventos com pico >= 2,5 mm/h, em dia útil, com intervalo por "
+            "reamostragem de dias. Notebook 13_gold_recuperacao_trecho.",
+        "colunas": {
+            "dimensao": "via, alagamento, onibus ou critico.",
+            "grupo": "Grupo de trechos.",
+            "periodo": "Quando a chuva acabou: todos, pico (6-9h e 16-19h) ou fora_do_pico (10-15h e 20-23h).",
+            "tau_min": "Minutos depois do fim (0 = janela logo após o fim).",
+            "razao": "Soma das distâncias / soma das distâncias esperadas. 1 = normal.",
+            "ic_inf": "Limite inferior do intervalo de 95%. Nulo se frágil.",
+            "ic_sup": "Limite superior do intervalo de 95%. Nulo se frágil.",
+            "fragil": "true se o grupo tem menos de 8 dias: indicativo, sem intervalo.",
+        },
+    },
+    "onibus.gold.tempo_recuperacao_grupo": {
+        "comentario":
+            "KR2 por grupo de trechos. Tempo de recuperação (razão >= 0,99 por 3 janelas seguidas) e perda nas 2 h seguintes. O grupo "
+            "crítico foi escolhido nos mesmos dias: use validacao_recuperacao para ele. Notebook 13_gold_recuperacao_trecho.",
+        "colunas": {
+            "dimensao": "via, alagamento, onibus ou critico.",
+            "grupo": "Grupo de trechos.",
+            "periodo": "Quando a chuva acabou: todos, pico ou fora_do_pico.",
+            "tempo_rec_min": "Minutos depois do fim até recuperar. Nulo = não recuperou até 170 min.",
+            "ic_inf": "Limite inferior do intervalo de 95%. Nulo se frágil.",
+            "ic_sup": "Limite superior do intervalo de 95%. Nulo se frágil ou se mais de 2,5% das reamostras não recuperaram.",
+            "frac_censurada": "Fração das reamostras que não recuperaram até 170 min.",
+            "perda_min": "Minutos de operação normal perdidos por ônibus nas 2 h depois do fim.",
+            "perda_ic_inf": "Limite inferior do intervalo de 95% da perda. Nulo se frágil.",
+            "perda_ic_sup": "Limite superior do intervalo de 95% da perda. Nulo se frágil.",
+            "perda_vs_ref": "Perda do grupo menos a do grupo de referência. Acima de 0 = perde mais.",
+            "ref_ic_inf": "Limite inferior do intervalo de 95% de perda_vs_ref. Nulo se frágil.",
+            "ref_ic_sup": "Limite superior do intervalo de 95% de perda_vs_ref. Nulo se frágil.",
+            "n_trechos": "Trechos no grupo.",
+            "n_dias": "Dias com dado no grupo.",
+            "janelas": "Janelas trecho × 10 min.",
+            "fragil": "true se o grupo tem menos de 8 dias: indicativo, sem intervalo.",
+        },
+    },
+    "onibus.gold.validacao_recuperacao": {
+        "comentario":
+            "KR2. Validação por divisão dos dias em metades: fiabilidade das medidas por trecho, classificação medida em outros dias e "
+            "recuperação dos 1% piores na chuva, medida em dias que não entraram na escolha. Notebook 13_gold_recuperacao_trecho.",
+        "colunas": {
+            "metrica": ("Nome da métrica. h1, h2 e h3 = 1ª, 2ª e 3ª hora; h1_h2 = 2 h seguidas. piores_ e resto_fora_da_amostra_Nmin = "
+                        "razão na faixa que começa N minutos depois do fim."),
+            "valor": "Valor observado.",
+        },
+    },
     "onibus.gold.efeito_trecho": {
         "comentario":
             "KR1 e KR3. Efeito da chuva moderada ou mais forte em cada trecho, em dia útil, 6h-23h, para quem tem pelo menos 8 dias e "

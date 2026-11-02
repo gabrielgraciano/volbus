@@ -280,6 +280,64 @@ Parte disso é tipo de via: arteriais alagam mais. Dentro de cada classe (5+ dia
 
 **Tudo isso é associação, não causa:** trechos não foram sorteados para ter faixa ou alagar.
 
+## 1.13 Recuperação por trecho e por grupo (02/11)
+
+Notebook `13_gold_recuperacao_trecho`: eventos com pico ≥ 2,5 mm/h, dia útil, 6h–23h, postos DAEE, sem trechos atípicos, sem janelas a ≤ 40 min da chuva seguinte. **Números do teste com os dados finais; a rodada oficial usa as mesmas sementes.**
+
+**O que não dá para medir: um tempo exato por trecho.** Uma janela isolada varia ±23% (mediana de 3 pares de posições). Com esse ruído, um trecho com déficit constante de 5%, que **nunca** recupera, seria marcado como recuperado na 1ª hora em 30% dos eventos; com déficit de 10%, em 17%. Por isso a análise de sobrevivência por trecho × evento (Kaplan–Meier e Cox, seção 2.6) foi **descartada**: mediria ruído.
+
+**KR2 por trecho.** 21.113 trechos passam na regra [N] (≥ 8 dias e ≥ 30 janelas na 2ª hora depois do fim). Razões na mistura de chuva da cidade, depois do encolhimento:
+
+| Classe de recuperação | Trechos | |
+|---|---|---|
+| até 1 h | 14.619 | 69,2% |
+| 1 h a 2 h | 20 | 0,1% |
+| mais de 1 h (3ª hora sem resposta) | 273 | 1,3% |
+| mais de 2 h | 41 | 0,2% |
+| indefinido | 6.160 | 29,2% |
+
+Em **14.953 trechos (70,8%)** dá para dizer a faixa de tempo. Perda nas 2 h seguintes: −3,8 / −0,3 / 2,9 min nos quantis de 5, 50 e 95%. Negativo = mais rápido que o normal: o trecho típico volta logo. Quem perde mais durante a chuva tende a perder depois (Spearman −0,49). Esse retrato é da mistura de chuva da cidade: depois de chuva no pico, o mesmo trecho demora mais.
+
+**Isso se repete em outros dias?** Classificando numa metade dos dias e medindo na outra:
+
+| Janela | Fiabilidade | Marcados "abaixo" | Marcados "normal" |
+|---|---|---|---|
+| 1ª hora | 0,31 | 0,966 | 1,002 |
+| 2ª hora | 0,28 | 0,987 | 1,015 |
+| 3ª hora | 0,25 | 0,992 | 1,023 |
+| 2 h seguidas | 0,37 | 0,966 | 1,006 |
+
+**Os piores na chuva demoram cerca do dobro.** Os 1% piores durante a chuva, escolhidos numa metade dos dias, com a recuperação medida na outra:
+
+| Minutos depois do fim | 0–30 | 30–60 | 60–90 | 90–120 | 120–150 | 150–180 |
+|---|---|---|---|---|---|---|
+| 1% piores | 0,816 | 0,847 | 0,922 | 0,937 | 0,999 | 1,000 |
+| resto | 0,971 | 0,982 | 0,995 | 1,003 | 1,006 | 1,009 |
+
+Voltam em ~2 h; o resto, em ~1 h. **Esse é o número a citar.** A curva do grupo crítico em `gold.recuperacao_grupo` fica abaixo de 1 por 3 h, mas ela é contaminada: o grupo foi escolhido nos mesmos dias, e na soma os poucos trechos muito ruins pesam mais. O trecho mediano do grupo tem razão 0,98 na 1ª hora e 1,00 na 2ª; 61 dos 119 com dado são `ate_1h`.
+
+**KR2 por grupo: tempo em minutos [IC 95%].** Regra do notebook 10. "n/r" = não recuperou até 170 min. "aberto" = mais de 2,5% das reamostras não recuperaram. Perda nas 2 h, comparada à referência (primeira linha de cada bloco):
+
+| Grupo | Fora do pico | Pico | Dia todo | Perda (min) | Diferença |
+|---|---|---|---|---|---|
+| Coletora | 0 [0–10] | 60 [40–aberto] | 30 [0–60] | 0,4 | referência |
+| Arterial | 30 [10–50] | n/r | 90 [50–aberto] | 2,8 | +2,4 [0,8–4,5] |
+| Expressa | 90 [20–110] | 130 [60–aberto] | 130 [70–aberto] | 6,6 | +6,3 [2,0–12,4] |
+| Local | 30 [0–aberto] | 40 [30–aberto] | 30 [0–aberto] | 0,8 | +0,4 [−1,3–1,6] |
+| 0 dias de alagamento | 10 [0–20] | 130 [50–aberto] | 50 [30–aberto] | 1,1 | referência |
+| 1–4 dias | 30 [10–50] | n/r | 90 [50–aberto] | 2,5 | +1,4 [0,4–2,5] |
+| 5+ dias | 50 [20–90] | n/r | 150 [50–aberto] | 3,7 | +2,6 [0,2–6,3] |
+| Sem faixa nem corredor | 10 [0–50] | 130 [40–aberto] | 50 [30–110] | 1,1 | referência |
+| Faixa | 30 [10–50] | 150 [50–aberto] | 90 [40–150] | 2,1 | +1,1 [0,0–3,0] |
+| Corredor | 50 [20–90] | n/r | n/r | 4,5 | +3,5 [0,5–8,0] |
+
+- **A hierarquia viária se repete na recuperação:** fora do pico, coletora volta na hora; arterial, em 30 min; expressa, em 90 min.
+- **Histórico de alagamento:** fora do pico, 10 → 30 → 50 min. A perda nas 2 h mais que triplica de 0 para 5+ dias.
+- **No pico, quase nada se resolve em 3 h**, e os intervalos ficam abertos: o pico termina antes de a fila dissipar. Compare grupos pela perda, não pelo tempo.
+- **Corredor demora mais**, mas está nas arteriais mais cheias: é associação, sem controle por via nesta tabela.
+
+**Bug corrigido:** `gold.obs_razao.razao` dividia por zero em 1.659 linhas com distância esperada zero, e quebrava quem selecionasse a coluna. Os notebooks usam `dist_m` e `dist_esperada_m`, então nenhum resultado muda. O notebook 09 agora usa `try_divide`; a view muda na próxima rodada dele.
+
 # 2. Decisões de desenho
 
 ## 2.1 Grão: trecho físico × janela de 10 min
@@ -329,9 +387,9 @@ Separar assim evita estimar trecho × hora × dia da semana × semana direto (c�
 ## 2.6 KR2 — recuperação
 
 - **Estudo de evento:** razão em relação à linha de base para τ = −60 … +180 min em torno do **início** e do **fim** de cada evento (2.3), por intensidade do evento, período do dia e grupo de trecho. Antes do início deve dar ~1 (teste de antecipação, 1.8).
-- **Tempo de recuperação** = primeiro instante depois do fim em que a razão fica **≥ 0,99 por ≥ 3 janelas (30 min)**; busca até 170 min. A banda só olha para baixo porque passar de 1 também é ter recuperado. Sempre **por período em que a chuva acabou** (seção 1.11).
+- **Tempo de recuperação (cidade e grupos de trechos)** = primeiro instante depois do fim em que a razão fica **≥ 0,99 por ≥ 3 janelas (30 min)**; busca até 170 min. A banda só olha para baixo porque passar de 1 também é ter recuperado. Sempre **por período em que a chuva acabou** (seção 1.11).
 - **Perda acumulada** (área do "triângulo de resiliência") = Σ(1 − razão) × tempo, em minutos-ônibus perdidos.
-- **Por trecho ou corredor:** análise de sobrevivência (Kaplan–Meier, Cox com atributos de infraestrutura), com **censura** quando volta a chover antes da recuperação ou acaba a operação do dia — alguns trechos alagáveis podem não se recuperar dentro do evento.
+- **Por trecho:** ~~análise de sobrevivência (Kaplan–Meier, Cox)~~ descartada em 02/11: com ±23% de ruído por janela, o primeiro cruzamento por trecho × evento é ruído (seção 1.13). No lugar: classe por faixa de tempo (1ª, 2ª e 3ª hora) e perda nas 2 h, com encolhimento e validação em outros dias.
 - Resultado da cidade: seção 1.11. Só trechos com postos DAEE, e sem as janelas a ≤ 40 min da chuva seguinte.
 
 ## 2.7 KR3 — ranking dos trechos mais afetados
@@ -416,6 +474,9 @@ Fontes levantadas e testadas a partir deste PC (detalhes, URLs e comandos em `do
 | `gold.efeito_cidade` | recorte × período × classe | KR1 da cidade, com IC |
 | `gold.recuperacao_cidade`, `gold.tempo_recuperacao` | período do fim × classe | KR2 da cidade: curva, tempo e perda |
 | `gold.trecho_infra` | trecho | classe de via, faixa, corredor, dias de alagamento |
+| `gold.recuperacao_trecho` | trecho | KR2: razão por hora, classe de recuperação, perda nas 2 h |
+| `gold.recuperacao_grupo`, `gold.tempo_recuperacao_grupo` | grupo × período | KR2: curva, tempo e perda |
+| `gold.validacao_recuperacao` | métrica | KR2: repetição em outros dias |
 | `gold.efeito_trecho` | trecho | efeito bruto e encolhido, IC, frequência no top-10/20 e entre os piores, grupo crítico, placebo |
 | `gold.estabilidade_ranking` | métrica | critério do KR3 e validações |
 | `gold.efeito_infra`, `gold.efeito_grupo` | modelo × termo; grupo × chuva | KR4 |

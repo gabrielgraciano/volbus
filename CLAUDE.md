@@ -391,6 +391,12 @@ Documento: **`docs/gold_desenho.md`** (+ `docs/gold_literatura.md`, `docs/gold_f
   - **KR1:** 24.576 trechos na regra; 8.700 (35%) com P(queda) ≥ 95%.
   - **KR3: critério reprovado** (Jaccard 0,33 < 0,5; 3 de 10 no top-20 em ≥ 80%), também com eixos, grade, estimadores robustos e chuva fraca. Não mudar o critério sem decisão do Rafael. Estável: **grupo crítico**, 130 trechos em 88 locais, validado fora da amostra e por placebo. Fiabilidade 0,42 → ~0,59 com o dobro de dias de chuva: rodar de novo com chuva nova.
   - **KR4 (associação):** arterial −5,7% e expressa −10,7% contra coletora em chuva forte+; alagamento: −2 a −4% com ≥ 5 dias dentro da classe de via, e nada com 1–4 dias em coletoras; faixa e corredor sem proteção detectável.
+- `13_gold_recuperacao_trecho` (02/11; testado com os dados finais, **falta rodar**): `gold.recuperacao_trecho`, `gold.recuperacao_grupo`, `gold.tempo_recuperacao_grupo`, `gold.validacao_recuperacao`. Teste: `analises/gold_exploracao/testa_13.py`. Detalhes: `docs/gold_desenho.md` §1.13.
+  - **Sobrevivência (KM/Cox) descartada:** janela varia ±23%; déficit constante de 5% seria "recuperado" na 1ª hora em 30% dos eventos.
+  - **KR2 por trecho:** 21.113 na regra; 14.953 classificados (14.619 até 1 h; 334 levam mais de 1 h; 6.160 indefinidos). Validado em outros dias.
+  - **Citar:** os 1% piores voltam em ~2 h e o resto em ~1 h (dias separados). Não citar a curva do grupo crítico: contaminada pelos mesmos dias.
+  - **KR2 por grupo, fora do pico:** coletora 0, arterial 30, expressa 90 min; alagamento 0/1–4/5+ dias: 10/30/50 min.
+- Notebook 09: `razao` da view usa `try_divide` (1.659 linhas dividiam por zero). A view só muda na próxima rodada do 09; nenhum resultado depende dela.
 - `silver.postos` ainda com 139 linhas: rodar o 07 de novo para entrar o status `sem_dado` (não afeta a gold).
 - Falha da fonte: 11/10 (domingo), ~6h–13h SP, API da SPTrans com 503 no login. Sem efeito em dia útil.
 - Chuva vai até 25/10; velocidade segue no job diário. Baixar SIBH de novo antes da análise final (mais dias de chuva ajudam o KR3).

@@ -189,7 +189,7 @@ SELECT o.*,
        b.v_base_ms * 3.6 AS v_base_kmh, f.fator_dia_hora, s.fator_semana,
        b.v_base_ms * f.fator_dia_hora * s.fator_semana * 3.6 AS v_esperada_kmh,
        o.tempo_s * b.v_base_ms * f.fator_dia_hora * s.fator_semana AS dist_esperada_m,
-       o.dist_m / (o.tempo_s * b.v_base_ms * f.fator_dia_hora * s.fator_semana) AS razao
+       try_divide(o.dist_m, o.tempo_s * b.v_base_ms * f.fator_dia_hora * s.fator_semana) AS razao
 FROM {OBS} o
 JOIN {LINHA_BASE} b USING (trecho_id, grupo_dia, hora)
 JOIN {AJUSTE_DIA_HORA} f USING (grupo_dia, dia_semana, hora)
