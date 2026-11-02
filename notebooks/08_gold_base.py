@@ -56,7 +56,7 @@ MIT_MIN = 60           # periodo seco minimo entre eventos (minimum inter-event 
 FRAC_CIDADE_MAX = 0.25 # acima disso, a chuva no resto da cidade contamina o "seco"
 SLOTS_30, SLOTS_60, SLOTS_3H = 3, 6, 18
 
-# Trecho atipico: fica nas tabelas, mas marcado. Fora do ranking (KR3). ~3% dos trechos, ~2% das horas-onibus.
+# Trecho atipico: fica nas tabelas, mas marcado. Fora do ranking (KR3). ~4% dos trechos, ~2% das horas-onibus.
 COMP_MIN_M, COMP_MAX_M = 30, 3000      # curtos demais (projecao) ou longos demais para serem "um trecho"
 SINUOSIDADE_MIN, SINUOSIDADE_MAX = 0.5, 3  # comprimento na rota / distancia em linha reta entre as paradas
 

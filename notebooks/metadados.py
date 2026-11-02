@@ -27,7 +27,8 @@ OBJETOS = {
         "Dados limpos e enriquecidos: GTFS versionado (gtfs_*) e a cadeia de posições "
         "posicao_limpa → posicao_rota → deslocamento → velocidade_trecho.",
     "SCHEMA onibus.gold":
-        "Tabelas prontas para os resultados (efeito da chuva por trecho). Ainda vazio.",
+        "Tabelas prontas para os resultados: trechos físicos e seus postos de chuva, chuva por posto com variáveis "
+        "derivadas e eventos de chuva; depois, velocidade relativa à linha de base e efeito da chuva. Desenho em docs/gold_desenho.md.",
     "VOLUME onibus.bronze.raw":
         "Arquivos crus. olhovivo/: posições da API Olho Vivo (bronze_posicao/ = v1, 25/08–21/09; "
         "bronze_raw/ = v2, desde 21/09) e auditoria.csv da coleta, copiados do Google Drive pelo notebook "
@@ -303,6 +304,108 @@ TABELAS = {
             "n_picos": "Slots marcados f_pico_implausivel desde 25/08.",
             "status": ("Primeiro que se aplica: sem_dado (nenhuma leitura desde 25/08), quebrado (razao < 0,4 ou 0 mm em 12/09 com dado), suspeito (razao > 2,0), "
                        "lacunar (completude < 90%), ok."),
+        },
+    },
+    "onibus.gold.trecho": {
+        "comentario":
+            "Trechos físicos: par de paradas consecutivas (parada_de, parada_ate), juntando as linhas que o usam. Tem sentido, "
+            "porque as paradas são cadastradas por lado da rua. Inclui trechos atípicos, marcados em f_atipico. Grão da gold. "
+            "Notebook 08_gold_base.",
+        "colunas": {
+            "trecho_id": "Identificador do trecho físico: parada_de>parada_ate.",
+            "parada_de": "Parada de início (stop_id do GTFS).",
+            "parada_ate": "Parada de fim (stop_id do GTFS).",
+            "nome_de": "Nome da parada de início.",
+            "nome_ate": "Nome da parada de fim.",
+            "lat_de": "Latitude da parada de início.",
+            "lon_de": "Longitude da parada de início.",
+            "lat_ate": "Latitude da parada de fim.",
+            "lon_ate": "Longitude da parada de fim.",
+            "lat": "Latitude do ponto médio entre as paradas (usado para achar os postos de chuva).",
+            "lon": "Longitude do ponto médio entre as paradas.",
+            "comprimento_m": "Comprimento na rota, em metros: mediana entre as linhas que usam o trecho.",
+            "dist_reta_m": "Distância em linha reta entre as duas paradas, em metros.",
+            "sinuosidade": "comprimento_m / dist_reta_m. ~1 numa rua reta; muito acima ou abaixo disso indica laço ou projeção ruim.",
+            "f_atipico": "Trecho suspeito: comprimento < 30 m ou > 3 km, ou sinuosidade < 0,5 ou > 3. Fica fora do ranking (KR3).",
+            "n_linhas": "Quantas linhas de ônibus usam o trecho.",
+            "linhas": "Linhas que usam o trecho, separadas por vírgula.",
+            "horas_onibus": "Total de horas de ônibus dentro do trecho na velocidade_trecho.",
+            "v_kmh_media": "Velocidade média do trecho em todo o período (soma das distâncias / soma dos tempos).",
+            "fonte_chuva": "De onde vem a chuva do trecho: daee, outra_rede (sem DAEE a 5 km) ou sem_posto.",
+            "n_postos": "Quantos postos de chuva o trecho usa (0 a 3).",
+            "dist_posto_km": "Distância ao posto mais próximo usado, em km.",
+        },
+    },
+    "onibus.gold.trecho_posto": {
+        "comentario":
+            "Postos de chuva de cada trecho: até 3 postos DAEE confiáveis a até 5 km do ponto médio, com peso 1/d² (d com piso de "
+            "0,1 km); sem DAEE, o posto confiável mais próximo de outra rede a até 5 km. Pesos somam 1 por trecho. "
+            "Trecho sem posto não aparece. Notebook 08_gold_base.",
+        "colunas": {
+            "trecho_id": "Trecho físico (gold.trecho).",
+            "prefixo": "Código do posto (silver.postos).",
+            "rede": "Rede do posto: daee, cemaden ou inmet.",
+            "fonte_chuva": "daee ou outra_rede.",
+            "ordem": "1 = posto mais próximo do trecho.",
+            "dist_km": "Distância do ponto médio do trecho ao posto, em km.",
+            "peso": "Peso do posto na média da chuva do trecho (1/d², normalizado).",
+        },
+    },
+    "onibus.gold.chuva_posto_10min": {
+        "comentario":
+            "Chuva por posto confiável (status ok, sem duplicata) a cada 10 min, com variáveis derivadas olhando para trás. "
+            "Mesmas linhas e mesma chuva da silver.chuva_10min para esses postos. Nulo = não sei, nunca 0. "
+            "Notebook 08_gold_base. Partição dt.",
+        "colunas": {
+            "prefixo": "Código do posto.",
+            "rede": "Rede do posto: daee, cemaden ou inmet.",
+            "slot_utc": "Início do slot de 10 min, em UTC.",
+            "slot_sp": "slot_utc no horário de São Paulo. Casa com janela_sp da velocidade_trecho.",
+            "dt": "Dia de São Paulo do slot. Partição.",
+            "mm": "Chuva no slot, em mm. Nulo = faltante ou negativo.",
+            "resolucao_min": "Intervalo coberto pela leitura que gerou o valor (10 = medido no slot).",
+            "f_faltante": "Nenhuma leitura cobre o slot.",
+            "f_negativo": "Leitura negativa (manutenção do pluviômetro).",
+            "f_intervalo_longo": "Valor veio de leitura que cobre mais de 10 min.",
+            "f_pico_implausivel": "Mais de 30 mm no slot: conferir com os vizinhos.",
+            "chove": "mm >= 0,2 (resolução do pluviômetro de báscula).",
+            "mm_h_30": "Intensidade nos últimos 30 min (este slot e os 2 anteriores), em mm/h. Nulo se faltar leitura.",
+            "mm_h_60": "Intensidade nos últimos 60 min, em mm/h. Nulo se faltar leitura.",
+            "mm_3h": "Acumulado nas últimas 3 h, em mm. Nulo se faltar leitura.",
+            "seco_3h": "Nenhum slot com chuva nas últimas 3 h, com as 18 leituras válidas.",
+            "frac_cidade_chuva": "Fração dos postos DAEE confiáveis com chuva neste slot.",
+            "seco_estrito": "seco_3h e menos de 25% dos postos DAEE da cidade chovendo. Define a linha de base.",
+            "evento_id": "Evento de chuva mais recente que já começou neste posto (gold.evento_chuva).",
+            "em_evento": "O slot está dentro desse evento.",
+            "min_desde_fim": "Minutos desde o fim do evento (0 = o slot logo depois do fim). Nulo dentro do evento.",
+            "min_ate_proximo": "Minutos até o próximo evento começar. Usado no teste de antecipação.",
+        },
+    },
+    "onibus.gold.evento_chuva": {
+        "comentario":
+            "Eventos de chuva por posto: começa no 1º slot com >= 0,2 mm e termina no último slot com chuva antes de >= 60 min "
+            "secos. Slots secos dentro do evento contam na duração. Notebook 08_gold_base.",
+        "colunas": {
+            "evento_id": "Identificador: prefixo-número do evento no posto.",
+            "prefixo": "Código do posto.",
+            "rede": "Rede do posto.",
+            "tempo_confiavel": "true só para a rede DAEE. CEMADEN e INMET têm leitura horária quando seco: início impreciso.",
+            "seq": "Número do evento no posto.",
+            "inicio_utc": "Início do 1º slot com chuva, em UTC.",
+            "fim_utc": "Fim do último slot com chuva, em UTC.",
+            "inicio_sp": "inicio_utc no horário de São Paulo.",
+            "fim_sp": "fim_utc no horário de São Paulo.",
+            "duracao_min": "Duração, em minutos.",
+            "mm_total": "Chuva total no evento, em mm.",
+            "relevante": "mm_total >= 1 mm.",
+            "pico_mm_h_10": "Maior intensidade em 10 min, em mm/h.",
+            "pico_mm_h_30": "Maior intensidade em 30 min, em mm/h.",
+            "slots_chuva": "Slots com chuva (>= 0,2 mm) no evento.",
+            "slots": "Total de slots do evento.",
+            "slots_validos": "Slots do evento com leitura válida.",
+            "proximo_inicio_utc": "Início do próximo evento do mesmo posto.",
+            "seco_antes_min": "Minutos secos entre o fim do evento anterior e este.",
+            "seco_depois_min": "Minutos secos entre este evento e o próximo.",
         },
     },
     "onibus.silver.gtfs_trechos": {
