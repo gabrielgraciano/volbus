@@ -366,3 +366,4 @@ plt.show()
 # COMMAND ----------
 
 aplicar_metadados(INFRA)
+aplicar_objetos()
