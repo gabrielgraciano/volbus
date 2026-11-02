@@ -306,6 +306,77 @@ TABELAS = {
                        "lacunar (completude < 90%), ok."),
         },
     },
+    "onibus.gold.obs_trecho_10min": {
+        "comentario":
+            "Uma linha por trecho físico × janela de 10 min com ônibus e chuva: distância e tempo dos ônibus, chuva dos postos do "
+            "trecho (média com peso 1/d²) e classe de chuva. Trecho sem posto não entra. Notebook 09_gold_obs_base. Partição dt.",
+        "colunas": {
+            "trecho_id": "Trecho físico (gold.trecho).",
+            "janela_sp": "Início da janela de 10 min, no horário de São Paulo.",
+            "dt": "Dia de São Paulo da janela (não o da coleta). Partição.",
+            "tipo_dia": "util, sabado, domingo ou feriado.",
+            "dist_m": "Distância percorrida pelos ônibus dentro do trecho na janela, somando as linhas, em metros.",
+            "tempo_s": "Tempo gasto pelos ônibus dentro do trecho na janela, somando as linhas, em segundos.",
+            "n_pares": "Pedaços de pares de posições que contribuíram.",
+            "n_onibus": "Soma, entre as linhas, dos ônibus distintos que passaram.",
+            "n_linhas": "Linhas com ônibus no trecho na janela.",
+            "hora": "Hora de São Paulo da janela.",
+            "dia_semana": "Dia da semana: 1 = domingo ... 7 = sábado.",
+            "semana": "Semana do ano (ISO).",
+            "grupo_dia": "util, sabado ou domingo_feriado. Usado na linha de base.",
+            "mm": "Chuva no slot, média ponderada dos postos com leitura, em mm.",
+            "mm_h_30": "Intensidade nos últimos 30 min, média ponderada, em mm/h.",
+            "mm_h_60": "Intensidade nos últimos 60 min, média ponderada, em mm/h.",
+            "mm_3h": "Acumulado nas últimas 3 h, média ponderada, em mm.",
+            "peso_valido": "Soma dos pesos dos postos com mm_h_30 válido (1 = todos os postos do trecho).",
+            "seco_estrito": "Todos os postos do trecho em seco estrito.",
+            "seco_3h": "Todos os postos do trecho sem chuva nas últimas 3 h.",
+            "em_evento": "Algum posto do trecho está dentro de um evento de chuva.",
+            "min_desde_fim": "Minutos desde o fim da chuva, no posto em que ela acabou por último. Nulo se algum posto está em evento.",
+            "min_ate_proximo": "Minutos até o próximo evento de chuva começar em algum posto do trecho.",
+            "frac_cidade_chuva": "Fração dos postos DAEE da cidade chovendo no slot.",
+            "classe_chuva": ("Primeira que se aplica: sem_dado, seco, transbordamento (postos secos, >= 25% da cidade chovendo), "
+                             "pos_chuva (sem chuva em 30 min, choveu em 3 h), traco (< 0,4 mm/h), fraca (< 2,5), moderada (< 10), "
+                             "forte (< 25), muito_forte."),
+        },
+    },
+    "onibus.gold.linha_base": {
+        "comentario":
+            "Velocidade normal de cada trecho por hora e grupo de dia: soma das distâncias / soma dos tempos nas janelas secas. "
+            "Exige 30 janelas secas em dia útil e 15 nos demais. Combinar com ajuste_dia_hora e ajuste_semana. Notebook 09_gold_obs_base.",
+        "colunas": {
+            "trecho_id": "Trecho físico.",
+            "grupo_dia": "util, sabado ou domingo_feriado.",
+            "hora": "Hora de São Paulo.",
+            "v_base_ms": "Velocidade normal, em m/s.",
+            "n_janelas_secas": "Janelas secas usadas.",
+            "n_dias_secos": "Dias com janelas secas usadas.",
+            "horas_onibus_secas": "Horas de ônibus nas janelas secas usadas.",
+        },
+    },
+    "onibus.gold.ajuste_dia_hora": {
+        "comentario":
+            "Fator multiplicativo da cidade por grupo de dia, dia da semana e hora, estimado nas janelas secas: quanto aquele dia e hora "
+            "diferem da linha de base do trecho (segunda ~3–4% mais rápida, sexta mais lenta). Notebook 09_gold_obs_base.",
+        "colunas": {
+            "grupo_dia": "util, sabado ou domingo_feriado.",
+            "dia_semana": "Dia da semana: 1 = domingo ... 7 = sábado.",
+            "hora": "Hora de São Paulo.",
+            "fator_dia_hora": "Fator: soma das distâncias / soma de (tempo × v_base), nas janelas secas.",
+            "n_janelas": "Janelas secas usadas.",
+        },
+    },
+    "onibus.gold.ajuste_semana": {
+        "comentario":
+            "Fator multiplicativo da cidade por semana, estimado nas janelas secas depois do fator de dia e hora. Corrige variações "
+            "lentas da velocidade (calendário, demanda). Notebook 09_gold_obs_base.",
+        "colunas": {
+            "semana": "Semana do ano (ISO).",
+            "inicio_semana": "Primeiro dia com janela seca na semana.",
+            "fator_semana": "Fator: soma das distâncias / soma de (tempo × v_base × fator_dia_hora), nas janelas secas.",
+            "n_janelas": "Janelas secas usadas.",
+        },
+    },
     "onibus.gold.trecho": {
         "comentario":
             "Trechos físicos: par de paradas consecutivas (parada_de, parada_ate), juntando as linhas que o usam. Tem sentido, "

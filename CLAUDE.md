@@ -380,3 +380,10 @@ Documento: **`docs/gold_desenho.md`** (+ `docs/gold_literatura.md`, `docs/gold_f
 - Linha de base varia por **dia da semana** (seg +3–4%, sex −0,3 a −3%) e semana (0,985–1,015) → ajuste multiplicativo.
 - Por trecho: ~78 janelas de chuva ≥ moderada mas só **~12 dias** → bootstrap por dia + Bayes empírico (estágio 2 com covariáveis = KR4).
 - KR4: GeoSampa WFS/arquivos abertos (classificação viária CET, faixas, corredores, Defesa Civil 2013–2026); baixar no PC e subir para `bronze/raw/infra/`.
+
+### Gold no Databricks
+- `08_gold_base` (02/11, rodado): `gold.trecho` (29.965 trechos físicos; 1.154 `f_atipico`), `gold.trecho_posto` (até 3 postos DAEE ok a ≤ 5 km, peso 1/d²; 755 trechos usam outra rede; 587 sem posto), `gold.chuva_posto_10min` (1,16 M slots de 94 postos ok: mm_h_30/60, mm_3h, seco_3h, seco_estrito, evento, min_desde_fim), `gold.evento_chuva` (9.445 eventos; período seco mínimo 60 min; `tempo_confiavel` = só DAEE). Rodar à mão depois do 07. Fora do job diário.
+- `09_gold_obs_base` (02/11): `gold.obs_trecho_10min` (trecho × janela + chuva + `classe_chuva`), `gold.linha_base` (trecho × grupo de dia × hora, janelas secas), `gold.ajuste_dia_hora`, `gold.ajuste_semana`, view `gold.obs_razao` (razão = dist / esperada; agregar sempre `sum(dist_m)/sum(dist_esperada_m)`). `dt` da obs = dia da **janela**, não da coleta (janelas da meia-noite têm pares em duas partições da silver; agrupar por `dt` da coleta duplicava ~10 mil janelas a cada 3 semanas). Classes novas: `traco` (< 0,4 mm/h: menos que uma batida do pluviômetro) e `transbordamento` (postos secos, ≥ 25% da cidade chovendo).
+- `silver.postos` ainda com 139 linhas: rodar o 07 de novo para entrar o status `sem_dado` (não afeta a gold).
+- Chuva vai até 25/10; velocidade segue no job diário. Baixar SIBH de novo antes da análise final (mais dias de chuva ajudam o KR3).
+
