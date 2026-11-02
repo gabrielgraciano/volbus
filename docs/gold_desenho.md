@@ -211,7 +211,7 @@ Agora com a chuva dos 3 postos, a linha de base ajustada por dia da semana e sem
 
 ## 1.12 Efeito por trecho, ranking e infraestrutura (02/11)
 
-Notebook `12_gold_efeito_trecho`: chuva moderada ou mais forte, dia útil, 6h–23h, postos DAEE, sem trechos atípicos. **Números do teste com os dados finais; a rodada oficial usa a mesma semente.**
+Notebook `12_gold_efeito_trecho`: chuva moderada ou mais forte, dia útil, 6h–23h, postos DAEE, sem trechos atípicos. **Rodada oficial de 02/11**, em `gold.efeito_trecho`, `gold.estabilidade_ranking`, `gold.efeito_infra` e `gold.efeito_grupo`; idêntica ao teste no PC, que usou a mesma semente.
 
 **KR1 por trecho.** 24.576 trechos passam na regra [N] (≥ 8 dias e ≥ 30 janelas), de 26.235 com alguma chuva moderada+ (93,7%). Em **8.700 (35,4%)** a probabilidade de queda real é ≥ 95%. Razão encolhida: 0,924 / 0,968 / 1,012 nos quantis de 5, 50 e 95%. O trecho típico (0,968) perde menos que a cidade (0,931) porque a cidade soma tempo: trechos cheios e ônibus presos pesam mais.
 
