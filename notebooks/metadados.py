@@ -306,6 +306,60 @@ TABELAS = {
                        "lacunar (completude < 90%), ok."),
         },
     },
+    "onibus.gold.efeito_cidade": {
+        "comentario":
+            "KR1. Quanto a velocidade da cidade cai por classe de chuva e período do dia, em dia útil, relativa ao seco do mesmo período, "
+            "com intervalo por reamostragem de dias. Notebook 10_gold_efeito_cidade.",
+        "colunas": {
+            "recorte": "tudo, ate_20_09 (coleta a 2 min) ou desde_21_09 (coleta a 1 min).",
+            "periodo": "manha (6-9h), meio (10-15h), tarde (16-19h), noite (20-23h) ou todos.",
+            "classe_chuva": "Classe de chuva da janela (obs_trecho_10min.classe_chuva).",
+            "razao": "Soma das distâncias / soma das distâncias esperadas, relativa ao seco do período. 0,90 = 10% mais lento.",
+            "ic_inf": "Limite inferior do intervalo de 95% (percentil das reamostras de dias). Nulo se a célula é frágil.",
+            "ic_sup": "Limite superior do intervalo de 95%. Nulo se a célula é frágil.",
+            "jk_min": "Menor razão tirando um dia por vez.",
+            "jk_max": "Maior razão tirando um dia por vez.",
+            "n_dias": "Dias com a célula.",
+            "janelas": "Janelas trecho × 10 min na célula.",
+            "fragil": "true se a célula tem menos de 8 dias: indicativo, sem intervalo.",
+        },
+    },
+    "onibus.gold.recuperacao_cidade": {
+        "comentario":
+            "KR2. Curva da razão depois do fim da chuva, por período em que ela acabou e intensidade do evento, em dia útil. Inclui as "
+            "janelas secas antes da chuva (classe_evento = antecipacao, tau negativo). Só trechos com postos DAEE e janelas a mais de "
+            "40 min da próxima chuva. Notebook 10_gold_efeito_cidade.",
+        "colunas": {
+            "periodo_fim": "Período em que a chuva acabou: manha, meio, tarde, noite ou todos (todos inclui madrugada).",
+            "classe_evento": "fraca (pico < 2,5 mm/h), moderada (< 10), forte (>= 10) ou antecipacao.",
+            "tau_min": "Minutos depois do fim (0 = janela logo após o fim). Negativo = minutos até a chuva chegar ao posto.",
+            "razao": "Soma das distâncias / soma das distâncias esperadas, relativa ao seco. 1 = normal.",
+            "ic_inf": "Limite inferior do intervalo de 95%. Nulo se frágil.",
+            "ic_sup": "Limite superior do intervalo de 95%. Nulo se frágil.",
+            "n_dias": "Dias com janelas neste ponto.",
+            "janelas": "Janelas trecho × 10 min neste ponto.",
+            "fragil": "true se a curva tem menos de 8 dias: indicativo, sem intervalo.",
+        },
+    },
+    "onibus.gold.tempo_recuperacao": {
+        "comentario":
+            "KR2. Tempo de recuperação da velocidade e perda acumulada, por período em que a chuva acabou e intensidade do evento. "
+            "Recuperado = razão >= 0,99 por 3 janelas seguidas. Notebook 10_gold_efeito_cidade.",
+        "colunas": {
+            "periodo_fim": "Período em que a chuva acabou: manha, meio, tarde, noite ou todos (todos inclui madrugada).",
+            "classe_evento": "fraca (pico < 2,5 mm/h), moderada (< 10) ou forte (>= 10).",
+            "tempo_rec_min": "Minutos depois do fim até recuperar. Nulo = não recuperou até 170 min.",
+            "ic_inf": "Limite inferior do intervalo de 95%. Nulo se frágil.",
+            "ic_sup": "Limite superior do intervalo de 95%. Nulo se frágil ou se mais de 2,5% das reamostras não recuperaram.",
+            "frac_censurada": "Fração das reamostras que não recuperaram até 170 min.",
+            "perda_min": "Minutos de operação normal perdidos por ônibus nas 2 h depois do fim. Negativo = mais rápido que o normal.",
+            "perda_ic_inf": "Limite inferior do intervalo de 95% da perda. Nulo se frágil.",
+            "perda_ic_sup": "Limite superior do intervalo de 95% da perda. Nulo se frágil.",
+            "n_dias": "Dias com a curva.",
+            "janelas": "Janelas trecho × 10 min na curva.",
+            "fragil": "true se a curva tem menos de 8 dias: indicativo, sem intervalo.",
+        },
+    },
     "onibus.gold.obs_trecho_10min": {
         "comentario":
             "Uma linha por trecho físico × janela de 10 min com ônibus e chuva: distância e tempo dos ônibus, chuva dos postos do "
@@ -314,7 +368,7 @@ TABELAS = {
             "trecho_id": "Trecho físico (gold.trecho).",
             "janela_sp": "Início da janela de 10 min, no horário de São Paulo.",
             "dt": "Dia de São Paulo da janela (não o da coleta). Partição.",
-            "tipo_dia": "util, sabado, domingo ou feriado.",
+            "tipo_dia": "util, sabado, domingo ou feriado, pelo dia da janela.",
             "dist_m": "Distância percorrida pelos ônibus dentro do trecho na janela, somando as linhas, em metros.",
             "tempo_s": "Tempo gasto pelos ônibus dentro do trecho na janela, somando as linhas, em segundos.",
             "n_pares": "Pedaços de pares de posições que contribuíram.",
@@ -335,6 +389,8 @@ TABELAS = {
             "min_desde_fim": "Minutos desde o fim da chuva, no posto em que ela acabou por último. Nulo se algum posto está em evento.",
             "min_ate_proximo": "Minutos até o próximo evento de chuva começar em algum posto do trecho.",
             "frac_cidade_chuva": "Fração dos postos DAEE da cidade chovendo no slot.",
+            "pico_evento_mm_h": ("Maior pico de intensidade em 30 min, em mm/h, entre os eventos em andamento ou que acabaram há até "
+                                 "3 h nos postos do trecho. Nulo se não houve evento nesse período."),
             "classe_chuva": ("Primeira que se aplica: sem_dado, seco, transbordamento (postos secos, >= 25% da cidade chovendo), "
                              "pos_chuva (sem chuva em 30 min, choveu em 3 h), traco (< 0,4 mm/h), fraca (< 2,5), moderada (< 10), "
                              "forte (< 25), muito_forte."),
@@ -509,7 +565,8 @@ TABELAS = {
         "colunas": {
             "dt": COL_DT,
             "janela_sp": "Início da janela de 10 min, no horário de São Paulo.",
-            "tipo_dia": "util, sabado, domingo ou feriado.",
+            "tipo_dia": ("util, sabado, domingo ou feriado, do primeiro par de cada shape × dt. Perto da meia-noite pode ser o do dia "
+                         "vizinho (0,01% das linhas); a gold usa o dia da janela."),
             "route_id": "Linha.",
             "direction_id": "Sentido no GTFS (0/1).",
             "shape_id": "Traçado.",

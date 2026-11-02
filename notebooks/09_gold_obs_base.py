@@ -45,9 +45,11 @@ from pyspark.sql import functions as F
 spark.conf.set("spark.sql.session.timeZone", "UTC")
 
 VEL = "onibus.silver.velocidade_trecho"
+LIMPA = "onibus.silver.posicao_limpa"
 TRECHO = "onibus.gold.trecho"
 TRECHO_POSTO = "onibus.gold.trecho_posto"
 CHUVA_POSTO = "onibus.gold.chuva_posto_10min"
+EVENTO = "onibus.gold.evento_chuva"
 
 OBS = "onibus.gold.obs_trecho_10min"
 LINHA_BASE = "onibus.gold.linha_base"
@@ -61,6 +63,7 @@ FRACA, MODERADA, FORTE = 2.5, 10.0, 25.0
 PESO_MIN = 0.5              # abaixo disso, a chuva do trecho vem de postos que pesam pouco
 MIN_JANELAS_UTIL = 30       # janelas secas para a linha de base de trecho × hora em dia util
 MIN_JANELAS_FDS = 15        # sabado, domingo e feriado tem bem menos dias
+POS_CHUVA_MIN = 180         # ate quando uma chuva que acabou conta como evento recente do trecho
 
 # COMMAND ----------
 
@@ -69,9 +72,11 @@ MIN_JANELAS_FDS = 15        # sabado, domingo e feriado tem bem menos dias
 # MAGIC
 # MAGIC `v` junta as linhas de cada trecho fisico na janela. O `dt` aqui e o dia da **janela**, nao o da coleta: uma janela das
 # MAGIC 23:50 pode ter pares nas duas particoes da silver, e agrupar pelo dia da coleta duplicaria a janela.
+# MAGIC `cal` da o tipo de cada dia. Ele vem da `posicao_limpa` porque o `tipo_dia` da `velocidade_trecho` e o do primeiro par de
+# MAGIC cada shape × dia: perto da meia-noite pode ser o do dia vizinho.
 # MAGIC `c` calcula a chuva do trecho em cada slot: media ponderada so com os postos que tem leitura, e `peso_valido` diz
 # MAGIC quanto do peso estava disponivel. Trecho sem posto nao entra. `min_desde_fim` so existe se nenhum posto do trecho
-# MAGIC esta em evento.
+# MAGIC esta em evento. `pico_evento_mm_h` e o maior pico entre os eventos em andamento ou recentes dos postos do trecho.
 
 # COMMAND ----------
 
@@ -81,9 +86,10 @@ def media(col):
 
 
 SQL_OBS = f"""
-WITH v AS (
+WITH cal AS (
+  SELECT DISTINCT date_format(ta_sp, 'yyyy-MM-dd') AS dt, tipo_dia FROM {LIMPA} WHERE dt >= '{INICIO}'),
+v AS (
   SELECT concat(parada_de, '>', parada_ate) AS trecho_id, janela_sp, date_format(janela_sp, 'yyyy-MM-dd') AS dt,
-         first(tipo_dia) AS tipo_dia,
          sum(dist_m) AS dist_m, sum(tempo_s) AS tempo_s, sum(n_pares) AS n_pares, sum(n_onibus) AS n_onibus,
          count(DISTINCT route_id) AS n_linhas
   FROM {VEL} WHERE dt >= '{INICIO}'
@@ -97,15 +103,17 @@ c AS (
          bool_or(ch.em_evento) AS em_evento,
          CASE WHEN bool_or(ch.em_evento) THEN NULL ELSE min(ch.min_desde_fim) END AS min_desde_fim,
          min(ch.min_ate_proximo) AS min_ate_proximo,
-         max(ch.frac_cidade_chuva) AS frac_cidade_chuva
+         max(ch.frac_cidade_chuva) AS frac_cidade_chuva,
+         max(CASE WHEN ch.em_evento OR ch.min_desde_fim <= {POS_CHUVA_MIN} THEN e.pico_mm_h_30 END) AS pico_evento_mm_h
   FROM {TRECHO_POSTO} tp JOIN {CHUVA_POSTO} ch USING (prefixo)
+  LEFT JOIN {EVENTO} e ON e.evento_id = ch.evento_id
   WHERE ch.dt >= '{INICIO}'
   GROUP BY 1, 2)
-SELECT v.*,
+SELECT v.*, cal.tipo_dia,
        hour(v.janela_sp) AS hora, dayofweek(v.janela_sp) AS dia_semana, weekofyear(v.janela_sp) AS semana,
-       CASE v.tipo_dia WHEN 'util' THEN 'util' WHEN 'sabado' THEN 'sabado' ELSE 'domingo_feriado' END AS grupo_dia,
+       CASE cal.tipo_dia WHEN 'util' THEN 'util' WHEN 'sabado' THEN 'sabado' ELSE 'domingo_feriado' END AS grupo_dia,
        c.mm, c.mm_h_30, c.mm_h_60, c.mm_3h, c.peso_valido, c.seco_estrito, c.seco_3h, c.em_evento,
-       c.min_desde_fim, c.min_ate_proximo, c.frac_cidade_chuva,
+       c.min_desde_fim, c.min_ate_proximo, c.frac_cidade_chuva, c.pico_evento_mm_h,
        CASE WHEN c.mm_h_30 IS NULL OR c.peso_valido < {PESO_MIN} THEN 'sem_dado'
             WHEN c.seco_estrito THEN 'seco'
             WHEN c.seco_3h THEN 'transbordamento'
@@ -116,7 +124,7 @@ SELECT v.*,
             WHEN c.mm_h_30 < {MODERADA} THEN 'moderada'
             WHEN c.mm_h_30 < {FORTE} THEN 'forte'
             ELSE 'muito_forte' END AS classe_chuva
-FROM v JOIN c ON c.trecho_id = v.trecho_id AND c.slot_sp = v.janela_sp
+FROM v JOIN cal USING (dt) JOIN c ON c.trecho_id = v.trecho_id AND c.slot_sp = v.janela_sp
 """
 
 # COMMAND ----------
@@ -199,6 +207,7 @@ JOIN {AJUSTE_SEMANA} s USING (semana)
 # MAGIC 3. **A linha de base descreve o seco:** nas janelas `seco`, a razao agregada e 1 no total (±0,2%), por dia da semana e
 # MAGIC    por semana (±0,5%). Por construcao tem que dar; se nao der, ha erro nos joins.
 # MAGIC 4. Pelo menos 90% do tempo de onibus tem linha de base.
+# MAGIC 5. O grupo de dia combina com o dia da semana (dia util nao cai em domingo).
 
 # COMMAND ----------
 
@@ -234,6 +243,9 @@ print(f"tempo de onibus com linha de base: {100 * t_raz / t_obs:.1f}%")
 if t_raz / t_obs < 0.90:
     problemas.append(f"so {100 * t_raz / t_obs:.1f}% do tempo tem linha de base")
 
+if o.filter("(grupo_dia = 'util' AND dia_semana IN (1, 7)) OR (grupo_dia = 'sabado' AND dia_semana <> 7)").count():
+    problemas.append("grupo de dia incoerente com o dia da semana")
+
 assert not problemas, "\n".join(problemas)
 print(f"ok: {o.count():,} observacoes ate {fim}; conservacao ok; razao no seco = {total:.4f}")
 
@@ -250,7 +262,8 @@ print(f"ok: {o.count():,} observacoes ate {fim}; conservacao ok; razao no seco =
 periodo = (F.when(F.col("hora").between(6, 9), "1 pico manha")
             .when(F.col("hora").between(16, 19), "3 pico tarde")
             .when(F.col("hora").between(10, 15), "2 meio do dia")
-            .otherwise("4 noite"))
+            .when(F.col("hora").between(20, 23), "4 noite")
+            .otherwise("5 madrugada"))
 ordem = F.array_position(F.array(*[F.lit(c) for c in ["sem_dado", "seco", "transbordamento", "pos_chuva", "traco", "fraca",
                                                       "moderada", "forte", "muito_forte"]]), F.col("classe_chuva"))
 display(r.filter("grupo_dia = 'util'").withColumn("periodo", periodo).withColumn("ordem", ordem)

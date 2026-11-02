@@ -2,7 +2,7 @@
 title: "Gold — desenho"
 subtitle: "Como medir o efeito da chuva na velocidade dos ônibus, trecho a trecho"
 author: "Projeto Ônibus SP × Chuva · Gabriel Graciano Dias"
-date: "25/10/2026"
+date: "25/10/2026, atualizado em 02/11/2026"
 lang: pt-BR
 ---
 
@@ -83,7 +83,7 @@ Mesma razão, para janelas sem chuva nos últimos 30 min, pelo tempo desde a úl
 | 80 | 0,990 | 0,992 | 0,993 |
 | 100–120 | ~1,00 | ~1,00 | ~1,00 |
 
-**A velocidade volta ao normal ~1h30–2h depois do fim da chuva**, inclusive depois de chuva forte. Linha de base com 3 h ou com 6 h sem chuva dá o mesmo resultado (0,971 vs 0,970 aos 20 min): **3 h sem chuva é uma linha de base segura.**
+**A velocidade volta ao normal ~1h30–2h depois do fim da chuva**, inclusive depois de chuva forte. *(Média do dia inteiro: a seção 1.11 mostra que o tempo depende muito da hora em que a chuva acaba.)* Linha de base com 3 h ou com 6 h sem chuva dá o mesmo resultado (0,971 vs 0,970 aos 20 min): **3 h sem chuva é uma linha de base segura.**
 
 ## 1.6 Efeito por trecho (KR3)
 
@@ -171,6 +171,44 @@ Revisão completa em `docs/gold_literatura.md`. Poucos estudos de ônibus com AV
 
 **Nossos números estão na faixa da literatura**, um pouco acima — esperado para ônibus, que somam ao tráfego o embarque mais lento com chuva (Novales et al. 2021). Heterogeneidade esperada pela literatura, e que vira hipótese do KR4: vias de maior hierarquia/mais rápidas perdem mais em %; faixa exclusiva e BRT atenuam; trechos alagáveis podem perder 20–40% e demorar mais a recuperar (Li et al. 2021, Shenzhen).
 
+## 1.11 Efeito e recuperação com a base final (02/11)
+
+Agora com a chuva dos 3 postos, a linha de base ajustada por dia da semana e semana e o intervalo de 2.000 reamostras de dias (`notebooks/10_gold_efeito_cidade.py`). Dia útil, 6h–23h, 25/08 a 25/10. **Prévia:** números do teste no warehouse, antes da rodada oficial do 09 corrigido e do 10. A correção mexe em 0,009% das linhas.
+
+**KR1: razão por classe de chuva e período [IC 95%].** Entre parênteses, células com menos de 8 dias: indicativas, sem intervalo.
+
+| Classe | Dia todo | Manhã (6–9h) | Meio (10–15h) | Tarde (16–19h) | Noite (20–23h) |
+|---|---|---|---|---|---|
+| pós-chuva | 0,993 [0,985–1,000] | 0,981 [0,973–0,990] | 1,007 [0,999–1,014] | 0,986 [0,960–1,005] | 0,991 [0,976–1,003] |
+| traço | 0,974 [0,965–0,981] | 0,974 [0,966–0,983] | 0,991 [0,985–0,997] | 0,957 [0,935–0,980] | 0,969 [0,955–0,984] |
+| fraca | 0,953 [0,938–0,966] | 0,959 [0,945–0,978] | 0,982 [0,972–0,990] | 0,925 [0,897–0,955] | 0,952 [0,933–0,972] |
+| moderada | 0,937 [0,919–0,950] | 0,942 [0,928–0,965] | 0,963 [0,954–0,983] | 0,897 [0,883–0,921] | 0,929 [0,852–0,955] |
+| forte | 0,907 [0,891–0,928] | 0,914 (7 dias) | 0,920 [0,908–0,984] | 0,878 (6 dias) | 0,914 (6 dias) |
+| muito forte | 0,854 [0,813–0,915] | — | 0,882 (6 dias) | 0,817 (3 dias) | 0,887 (2 dias) |
+
+- **Dose-resposta com intervalo:** forte perde mais que moderada (0,968 [0,959–0,983]) e muito forte mais que forte (0,942 [0,889–0,988]). Moderada × fraca fica no limite (0,983 [0,964–1,001]).
+- **O pico da tarde é mesmo o mais sensível:** tarde × meio do dia dá 0,942 [0,912–0,971] na chuva fraca e 0,931 [0,903–0,959] na moderada. Na forte, 0,954 [0,888–1,010]: inconclusivo.
+- **Traço também pesa** (−2,6%): menos de uma batida do pluviômetro em 30 min, mas em geral sinal de chuva por perto.
+- **Coleta a 2 min × a 1 min:** mesma direção. Dia todo: fraca 0,942 × 0,965; moderada 0,942 × 0,930.
+
+**KR2: tempo de recuperação (min) [IC 95%].** Recuperado = razão ≥ 0,99 por 3 janelas seguidas. "aberto" = mais de 2,5% das reamostras não recuperaram até 170 min.
+
+| A chuva acabou | Fraca | Moderada | Forte |
+|---|---|---|---|
+| de manhã | 70 [50–aberto] | 130 [70–aberto] | 50 [20–50] |
+| no meio do dia | 0 [0–0] | 40 [0–50] | 0 [0–50] |
+| à tarde | 120 [40–aberto] | 100 [40–aberto] | não recuperou até 170 (6 dias) |
+| à noite | 40 [20–70] | 30 [10–90] | 30 (7 dias) |
+| dia todo | 50 [20–80] | 90 [50–140] | 50 [20–aberto] |
+
+- **O tempo de recuperação depende mais da hora em que a chuva acaba do que da intensidade.** Fora dos picos a velocidade volta em até ~40 min; nos picos leva 1–2 h, e chuva forte no fim da tarde pode não se recuperar antes de o pico acabar (6 dias: frágil). Os "~100–120 min" da 1.5 são uma média dessas situações.
+- **Forte no dia todo parece voltar mais rápido que moderada:** não comparar assim, porque cada classe mistura horários de fim diferentes. Comparar dentro do período.
+- **Quando a chuva acaba no meio do dia, a velocidade passa do normal** (perda de −1,0 min [−1,8 a −0,1] nas 2 h após chuva fraca; razão ~1,01). Hipótese, não testada: menos demanda em dia de chuva.
+- **Perda acumulada nas 2 h depois do fim** (minutos de operação normal perdidos por ônibus): moderada 4,2 [1,7–7,1] de manhã e 3,6 [−1,0–10,3] à tarde; fraca 2,8 [0,6–6,8] à tarde.
+- **O tempo é um estimador instável:** é a primeira vez que uma curva ruidosa cruza um limite, então o valor pode ficar na ponta do intervalo (fraca à tarde: 120 [40–aberto]). A perda acumulada varia menos e deve acompanhar o tempo no KR2 por trecho.
+
+**Antecipação:** 0,991 a 10 min da chuva, 0,995 a 20 min, ~0,998 entre 30 e 50 min e 1,00 de 60 min para trás. Confirma o fuso e justifica tirar da curva de recuperação as janelas a ≤ 40 min da chuva seguinte (14% das janelas).
+
 # 2. Decisões de desenho
 
 ## 2.1 Grão: trecho físico × janela de 10 min
@@ -203,6 +241,10 @@ Por posto (e herdado pelo trecho): **início** = slot com ≥ 0,2 mm depois de �
 
 Separar assim evita estimar trecho × hora × dia da semana × semana direto (célula com pouquíssimo dado). Sensibilidade: só o período a 1 min (21/09–24/10).
 
+**Classes de chuva finais (notebook 09), a primeira que se aplica:** `sem_dado` (menos de metade do peso dos postos com leitura); `seco` (seco estrito); `transbordamento` (postos secos há 3 h, mas ≥ 25% da cidade chovendo); `pos_chuva` (sem chuva em 30 min, mas choveu em 3 h); `traco` (< 0,4 mm/h, menos que uma batida do pluviômetro em 30 min); `fraca` (< 2,5); `moderada` (< 10); `forte` (< 25); `muito_forte`.
+
+**Tipo de dia:** o `tipo_dia` da gold vem do dia da janela, pela `posicao_limpa`. O da `velocidade_trecho` é o do primeiro par de cada shape × dt e pode ser o do dia vizinho perto da meia-noite (0,009% das linhas). Um `first()` por trecho × janela chegou a criar células `util × domingo` no ajuste, com efeito desprezível, antes da correção de 02/11.
+
 ## 2.5 KR1 — efeito da chuva
 
 1. **Descritivo** (como na 1.4): razão por classe de intensidade × período do dia, com intervalo de confiança por **bootstrap por blocos de dia** (janelas do mesmo dia são dependentes; o tamanho efetivo da amostra é o número de dias/eventos, não o de janelas).
@@ -216,10 +258,10 @@ Separar assim evita estimar trecho × hora × dia da semana × semana direto (c�
 ## 2.6 KR2 — recuperação
 
 - **Estudo de evento:** razão em relação à linha de base para τ = −60 … +180 min em torno do **início** e do **fim** de cada evento (2.3), por intensidade do evento, período do dia e grupo de trecho. Antes do início deve dar ~1 (teste de antecipação, 1.8).
-- **Tempo de recuperação** = primeiro instante depois do fim em que a razão volta para dentro da banda da linha de base (±1%, ou ±1 desvio-padrão das janelas secas do trecho) **e fica lá por ≥ 3 janelas (30 min)**; busca até 3 h depois do fim.
+- **Tempo de recuperação** = primeiro instante depois do fim em que a razão fica **≥ 0,99 por ≥ 3 janelas (30 min)**; busca até 170 min. A banda só olha para baixo porque passar de 1 também é ter recuperado. Sempre **por período em que a chuva acabou** (seção 1.11).
 - **Perda acumulada** (área do "triângulo de resiliência") = Σ(1 − razão) × tempo, em minutos-ônibus perdidos.
 - **Por trecho ou corredor:** análise de sobrevivência (Kaplan–Meier, Cox com atributos de infraestrutura), com **censura** quando volta a chover antes da recuperação ou acaba a operação do dia — alguns trechos alagáveis podem não se recuperar dentro do evento.
-- Primeiro resultado da cidade: **~100–120 min** (seção 1.5).
+- Resultado da cidade: seção 1.11. Só trechos com postos DAEE, e sem as janelas a ≤ 40 min da chuva seguinte.
 
 ## 2.7 KR3 — ranking dos trechos mais afetados
 
@@ -263,7 +305,7 @@ Fontes levantadas e testadas a partir deste PC (detalhes, URLs e comandos em `do
 
 - **Erro de medida da chuva** (posto a 1,6 km; báscula subestima intensidades altas) puxa o efeito para zero: testar a interação efeito × distância ao posto e o posto mais próximo com teto de 2, 3 e 5 km. O efeito deve crescer quando o posto está mais perto.
 - **Dado faltante informativo:** em alagamento os ônibus somem do trecho (desviados ou parados) exatamente no pior momento. Analisar também o **número de passagens** como desfecho, e rodar com e sem `parado_longo`.
-- **Calendário:** feriados (07/09 e 12/10, segundas), eleição (04/10, domingo), suspensão do rodízio em dias de chuva forte (ex.: 14/10, 17h–20h), greves e jogos — marcar e testar a exclusão.
+- **Calendário:** feriados (07/09 e 12/10, segundas), eleições (04/10 e 25/10, domingos; em 04/10 houve 29% mais horas-ônibus que num domingo normal), suspensão do rodízio em dias de chuva forte (ex.: 14/10, 17h–20h), greves e jogos — marcar e testar a exclusão.
 - **Métrica:** % (log) é a principal; para somar ao longo de uma rota, usar *pace* (s/km), que é aditivo.
 - **Mecanismos misturados:** o efeito é na velocidade comercial (tráfego + embarque), não "do trânsito".
 
@@ -271,12 +313,15 @@ Fontes levantadas e testadas a partir deste PC (detalhes, URLs e comandos em `do
 
 | Tabela | Grão | Conteúdo |
 |---|---|---|
-| `gold.trecho` | trecho físico | coordenadas, comprimento, linhas, postos atribuídos (pesos e distâncias); depois, atributos de infraestrutura (KR4) |
+| `gold.trecho`, `gold.trecho_posto` | trecho físico; trecho × posto | coordenadas, comprimento, linhas, `f_atipico`, `fonte_chuva`; postos atribuídos com pesos. Depois, atributos de infraestrutura (KR4) |
 | `gold.chuva_posto_10min` | posto × slot | intensidades em 30/60 min, acumulado 3 h, minutos desde o fim, `evento_id` |
 | `gold.evento_chuva` | evento | posto, início, fim, duração, total, pico |
-| `gold.obs_trecho_10min` | trecho × janela | Σd, Σt, velocidade, n_pares, chuva atribuída, linha de base, razão |
-| `gold.efeito_cidade` | classe × período | KR1 e KR2 da cidade, com IC |
-| `gold.efeito_trecho` | trecho | efeito bruto, efeito com encolhimento, IC, frequência no top-10/20, dados usados |
+| `gold.obs_trecho_10min` | trecho × janela | Σd, Σt, n_pares, chuva atribuída, pico do evento, classe de chuva |
+| `gold.linha_base`, `gold.ajuste_dia_hora`, `gold.ajuste_semana` | trecho × grupo × hora; cidade | velocidade normal e fatores |
+| `gold.obs_razao` (view) | trecho × janela | observações + velocidade esperada + razão |
+| `gold.efeito_cidade` | recorte × período × classe | KR1 da cidade, com IC |
+| `gold.recuperacao_cidade`, `gold.tempo_recuperacao` | período do fim × classe | KR2 da cidade: curva, tempo e perda |
+| `gold.efeito_trecho` (a fazer, notebook 11) | trecho | efeito bruto, efeito com encolhimento, IC, frequência no top-10/20, dados usados |
 
 # 4. Riscos e cuidados
 
@@ -284,6 +329,7 @@ Fontes levantadas e testadas a partir deste PC (detalhes, URLs e comandos em `do
 - **Dependência dentro do dia:** erros-padrão e ranking por bootstrap de dias, não de janelas.
 - **Linha de base variando** com dia da semana e semana: ajustar (seção 2.4).
 - **Rede CEMADEN:** fora das variáveis de tempo.
+- **Falha da fonte:** em 11/10 (domingo), das ~6h às ~13h, a API da SPTrans respondeu 503 no login e quase não há posições. Não afeta dia útil; nenhum dia útil tem falha parecida.
 - **Ônibus presos em alagamento:** a regra `parado_longo` (≥ 20 min) pode remover justamente os piores casos; rodar o KR1/KR3 com e sem eles.
 - **Validade externa:** setembro de 2026 foi o mais chuvoso da série, com chuva frontal persistente; o efeito de temporais convectivos de verão pode ser diferente.
 - **Trechos com razão absurda** (0 ou > 10): dado insuficiente ou trecho mal formado; a regra de dado mínimo resolve a maioria.
