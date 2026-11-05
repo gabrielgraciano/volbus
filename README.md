@@ -4,12 +4,9 @@ Onde a chuva mais degrada a malha de ônibus de São Paulo, e quais elementos da
 infraestrutura estão associados a essa perda. A medida é a velocidade dos ônibus
 por trecho, comparada com a linha de base em tempo seco.
 
-Projeto de Gabriel Graciano Dias (Estatística, IME-USP, MAE0350), com mentoria de
-Rafael Ribaldo.
-
 ## Como funciona
 
-1. **Coleta (VM na DigitalOcean).** `coletor_v2.py` grava a posição de toda a frota
+1. **Coleta (VM).** `coletor_v2.py` grava a posição de toda a frota
    a cada minuto, pela API Olho Vivo da SPTrans. `coletor_cet.py` coleta a lentidão
    da CET e `coletor_kmz.py` a velocidade nas vias publicada pela SPTrans. O
    `backup.sh` move os arquivos para o Google Drive. O agendamento está em
@@ -38,5 +35,4 @@ Rafael Ribaldo.
 
 ## Para saber mais
 
-[`docs/projeto_completo.pdf`](docs/projeto_completo.pdf) documenta o projeto
-inteiro, da coleta aos KRs, com as decisões de cada etapa.
+[`docs/projeto_completo.pdf`](docs/projeto_completo.pdf) documenta o projeto.
