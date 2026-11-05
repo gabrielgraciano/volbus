@@ -327,7 +327,7 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
    - **M1 em andamento (27/09):** workspace `dbc-5db28b12-6d9e.cloud.databricks.com`, CLI autenticada (OAuth). Catálogo `onibus` (criado pela UI — Default Storage não permite criar catálogo via API), schemas `bronze/silver/gold`, volume `onibus.bronze.raw`. Subido `bronze_raw/dt=2026-09-22` + `auditoria.csv`. Notebook `notebooks/01_bronze_posicao.py` (workspace: `/Users/diasg270@gmail.com/onibus/`) grava `onibus.bronze.posicao` particionada por `dt`; **checagem tabela × auditoria: dif = 0 em 22/09**. Falta: demais dias v2, dias v1 (`bronze_posicao/*.ndjson.gz`, schema achatado diferente), CET/KMZ/GTFS.
    - **Rede do serverless (testado 03/10):** saída restrita. Alcança `pypi.org` e `*.googleapis.com` (Drive API respondeu 403 "unregistered callers" = Google, não bloqueio); **bloqueia** `www.google.com`, `drive.google.com` e `api.olhovivo.sptrans.com.br` (falha de DNS). Liberar domínios exige *network policies* (Context-based egress), que pedem **plano ENTERPRISE** — a conta não tem (`PERMISSION_DENIED ... required pricing tier(s) ENTERPRISE`). Consequência: **coleta da API pelo Databricks é inviável**; VM continua coletando.
    - **Plano de ingestão (03/10):** Databricks **puxa do Google Drive** via Drive API com service account (pasta `olhovivo-bronze` compartilhada como leitor; chave JSON em secret do Databricks) → notebook `00_ingestao_drive` copia para o volume, pulando o que já existe → job `ingestao_drive` → `bronze_posicao`. Vantagem sobre VM empurrando: carrega também o histórico (25/08–22/09) sem o PC. Ordem: (1) job do notebook 01 pela UI, (2) ingestão do Drive, (3) bundle.
-9. **Repositório Git:** privado em https://github.com/gabrielgraciano/volbus (push em 27/09). Commit `ba380b4` = estado herdado da IA, antes de qualquer correção. Falta: README escrito pelo Gabriel. `.gitignore` bloqueia `.env`, `rclone.conf`, `data/` e arquivos de dado; `.gitattributes` força LF (CRLF quebra o cron).
+9. **Repositório Git:** privado em https://github.com/gabrielgraciano/volbus (push em 27/09). Commit `ba380b4` = estado herdado da IA, antes de qualquer correção. README curto desde 05/11. `.gitignore` bloqueia `.env`, `rclone.conf`, `data/` e arquivos de dado; `.gitattributes` força LF (CRLF quebra o cron).
 9b. ~~Deploy das correções do coletor~~ — feito 27/09 21:46 UTC (commit `63be6e2` do `coletor_v2.py` → `coletor.py` no droplet; backup em `coletor.py.bak-20260927`). A partir daqui, payload `null` entra no retry e falha de login gera linha de auditoria.
 9c. ~~Corrigir o `%` do alerta de disco~~ — feito 27/09 (testado com limiar 0%). Crontab versionado em `crontab.txt`; instalar com `crontab crontab.txt`.
 10. **Checagens:** fuso (pico 6–9h local), erros de coleta × chuva, velocidade inferida × lentidão CET por região/hora.
@@ -349,7 +349,7 @@ Linha 2290-10, sl=1, 26/08 10:49–11:54 SP, 40 veículos (15 ociosos filtrados)
 | `consolida_chuva.py` | atual |
 | `coordenadas_postos.csv` | template com os 161 IDs, lat/lon vazios |
 | `sp_ids.txt` | 161 IDs do município, `;`-separados |
-| `coletor_olhovivo_ndjson.py`, `coletor_olhovivo.py`, `README.md` | **obsoletos** (v1 / versão Parquet) |
+| `coletor_olhovivo_ndjson.py`, `coletor_olhovivo.py`, `README.md` antigo | **obsoletos** (v1 / versão Parquet); o `README.md` atual é de 05/11 |
 | `infra_droplet.md` | **parcialmente obsoleto** (timer de 2 min, cron antigo) |
 | `okr-onibus-clima.md` | **obsoleto** (KRs de entrega; substituídos pelos do Rafael) |
 
